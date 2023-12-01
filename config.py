@@ -6,15 +6,18 @@ config.embedding_size = 512 # embedding size of evaluation
 config.momentum = 0.9
 config.weight_decay = 5e-4
 config.batch_size = 128 # batch size per GPU
-config.lr = 0.01
-config.output = "output/R50_CRFIQA" # train evaluation output folder
-config.global_step=0 # step to resume
+config.lr = 1e-3
+config.output = "output/R50_CRFIQA_SIGMOID" # train evaluation output folder
 config.s=64.0
 config.m=0.50
 config.beta=0.5
 config.num_workers = 4
 config.device= "cuda"
 
+config.resume = True 
+config.resume_head = "/home1/data/tanminh/FIQA/output/R50_CRFIQA/18000header.pth"
+config.resume_backbone = "/home1/data/tanminh/FIQA/output/R50_CRFIQA/18000backbone.pth"
+config.global_step=18000 # step to resume
 
 
 # type of network to train [ iresnet100 | iresnet50 ]

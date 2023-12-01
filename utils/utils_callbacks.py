@@ -64,7 +64,7 @@ class CallBackLogging(object):
         self.init = False
         self.tic = 0
 
-    def __call__(self, global_step, loss: AverageMeter, epoch: int, std:float, center:float):
+    def __call__(self, global_step, loss: AverageMeter, epoch: int, std:float, center:float, lr= -1):
         if self.rank == 0 and global_step > 0 and global_step % self.frequent == 0:
             if self.init:
                 try:
@@ -83,8 +83,8 @@ class CallBackLogging(object):
                 if self.writer is not None:
                     self.writer.add_scalar('time_for_end', time_for_end, global_step)
                     self.writer.add_scalar('loss', loss.avg, global_step)
-                msg = "Speed %.2f samples/sec   Loss %.4f Margin %.4f Center %.4f Epoch: %d   Global Step: %d   Required: %1.f hours" % (
-                    speed_total, loss.avg, std, center,epoch, global_step, time_for_end
+                msg = "Speed %.2f samples/sec   Loss %.4f Margin %.4f Center %.4f Epoch: %d   Global Step: %d Lr: %.4f  Required: %1.f hours" % (
+                    speed_total, loss.avg, std, center,epoch, global_step, lr, time_for_end
                 )
                 logging.info(msg)
                 loss.reset()

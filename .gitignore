@@ -1,0 +1,7 @@
+*.pth 
+*.npy
+original_images/
+low_quality_images/
+*.pyc
+*.jpg
+output/

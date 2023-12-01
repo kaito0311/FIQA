@@ -37,7 +37,9 @@ class Head_Cls(torch.nn.Module):
     def forward(self, x): 
         return self.qs(x) 
     
-
+def get_lr(optimizer):
+    for param_group in optimizer.param_groups:
+        return param_group['lr']
 
 def main():
     if not os.path.exists(cfg.output):
@@ -50,7 +52,7 @@ def main():
     init_logging(log_root, 0, cfg.output)
 
     trainset = MXFaceDataset(root_dir=cfg.rec, local_rank=None)
-    dataloader = DataLoader(trainset, cfg.batch_size, shuffle=True,
+    dataloader = DataLoader(trainset, cfg.batch_size, shuffle=False,
                             num_workers=cfg.num_workers, drop_last=True)
 
     backbone = iresnet160(False)
@@ -61,22 +63,28 @@ def main():
     backbone.cuda() 
     head.cuda() 
 
+    if cfg.resume: 
+        print("[INFO] Resume. Loading last chk...")
+        head.load_state_dict(torch.load(cfg.resume_head))
+        backbone.load_state_dict(torch.load(cfg.resume_backbone))
+
     backbone.eval() 
     for p in backbone.parameters():
         p.requires_grad = False 
     
     head.train() 
-    backbone.train() 
+    backbone.eval() 
 
     FR_loss= losses.CR_FIQA_LOSS_ONTOP(
         device= "cuda",
     )
 
-    opt_head = torch.optim.SGD(
-    params=[{'params': head.parameters()}],
-    lr=cfg.lr / 512 * cfg.batch_size,
-    momentum=0.9, weight_decay=cfg.weight_decay)
+    # opt_head = torch.optim.SGD(
+    # params=[{'params': head.parameters()}],
+    # lr=cfg.lr,
+    # momentum=0.9, weight_decay=cfg.weight_decay)
 
+    opt_head = torch.optim.AdamW(head.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
     scheduler_backbone = torch.optim.lr_scheduler.LambdaLR(
         optimizer=opt_head, lr_lambda=cfg.lr_func)
 
@@ -88,7 +96,7 @@ def main():
 
     rank = 0
     world_size=1
-    callback_verification = CallBackVerification(cfg.eval_step, rank, cfg.val_targets, cfg.rec)
+    # callback_verification = CallBackVerification(cfg.eval_step, rank, cfg.val_targets, cfg.rec)
     callback_logging = CallBackLogging(50, rank, total_step, cfg.batch_size, world_size, writer=None)
     callback_checkpoint = CallBackModelCheckpoint(rank, cfg.output)
     alpha=10.0  #10.0
@@ -97,16 +105,28 @@ def main():
 
 
     for epoch in range(start_epoch, cfg.num_epoch):
-        for _, (img, label) in enumerate(dataloader):
+        for index, (img, img_tensor, label) in enumerate(dataloader):
             global_step += 1
-            img = img.cuda()
+            img_tensor = img_tensor.cuda()
             label = label.cuda()
-
-            features= backbone(img)
+            # print("index: ", index)
+            features= backbone(img_tensor)
             qs = head(features)
-            thetas, std, ccs,nnccs = FR_loss(features, label)
-            loss_qs=criterion_qs(ccs/ nnccs,qs)
-            loss_v = criterion(thetas, label) + alpha* loss_qs
+            thetas, index_nq, ccs,nnccs = FR_loss(features, label)
+            if len(index_nq) > 0: 
+                import numpy as np 
+                save_img = img[index_nq].detach().cpu().numpy()
+                print(index, len(index_nq))
+                np.save(f"low_quality_images/{index}_low_quality", save_img)
+                np.save(f"low_quality_images/{index}_low_quality_features", features.detach().cpu().numpy())
+                np.save(f"low_quality_images/{index}_index_low_quality", index_nq.detach().cpu().numpy())
+                np.save(f"low_quality_images/{index}_label_low_quality", label.detach().cpu().numpy())
+            # print(qs)
+            # print(ccs/ (nnccs + 1 + 1e-9))
+            ref_score = torch.sigmoid((ccs - nnccs) * 2/ (nnccs + 1 + 1e-9))
+            qs = torch.sigmoid(qs)
+            loss_qs=criterion_qs(ref_score,qs)
+            loss_v = 100 * loss_qs
             loss_v.backward()
             clip_grad_norm_(backbone.parameters(), max_norm=5, norm_type=2)
 
@@ -116,13 +136,13 @@ def main():
 
             loss.update(loss_v.item(), 1)
             
-            callback_logging(global_step, loss, epoch, 0,loss_qs)
-            callback_verification(global_step, backbone)
-            if global_step % 5000 == 0: 
+            callback_logging(global_step, loss, epoch, 0,loss_qs, get_lr(opt_head))
+            # callback_verification(global_step, backbone)
+            if global_step % 1000 == 0: 
                 callback_checkpoint(global_step, backbone, head)
 
         scheduler_backbone.step()
-
+        
         callback_checkpoint(global_step, backbone, head)
 
 main() 
