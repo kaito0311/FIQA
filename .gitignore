@@ -5,3 +5,5 @@ low_quality_images/
 *.pyc
 *.jpg
 output/
+pretrained/
+venv/

@@ -104,3 +104,36 @@ class MXFaceDataset(Dataset):
 
     def __len__(self):
         return len(self.imgidx)
+
+class FaceDataset(Dataset):
+    def __init__(self, feature_dir, path_dict) -> None:
+        super().__init__()
+        self.feature_dir = feature_dir 
+        self.dict = np.load(path_dict, allow_pickle= True).item() 
+        self.list_name = [] 
+        self.list_id = []
+        self.list_name_uni_id = list(self.dict.keys())
+        self.prepare()
+        
+    
+    def prepare(self):
+        for key in self.dict.keys():
+            self.list_name = self.list_name + self.dict[key] 
+            self.list_id = self.list_id + [key] * len(self.dict[key])
+        print(len(self.list_name))
+        print(len(self.list_id))
+        assert len(self.list_name) == len(self.list_id) 
+    
+    def __getitem__(self, index):
+        name_image = self.list_name[index]
+        name_id = self.list_id[index]
+        list_file:list = self.dict[name_id]
+        
+        idx = list_file.index(name_image)
+        
+        embedding = np.load(os.path.join(self.feature_dir, str(name_id) + ".npy"))[idx]
+
+        return torch.Tensor(embedding.astype(np.float32)), torch.tensor(self.list_name_uni_id.index(self.list_id[index]), dtype= torch.long)
+    def __len__(self):
+        return len(self.list_name)
+

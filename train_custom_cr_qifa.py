@@ -13,10 +13,11 @@ from torch.nn import CrossEntropyLoss
 
 import losses
 from config import config as cfg
-from dataset import MXFaceDataset
+from dataset import MXFaceDataset, FaceDataset
 from utils.utils_callbacks import CallBackVerification, CallBackLogging, CallBackModelCheckpoint
 from utils.utils_logging import AverageMeter, init_logging
 
+from models.imintv5 import ONNX_IMINT
 from backbones.iresnet import iresnet100, iresnet50
 from backbones.iresnet_imintv5 import iresnet160
 
@@ -51,29 +52,24 @@ def main():
 
     init_logging(log_root, 0, cfg.output)
 
-    trainset = MXFaceDataset(root_dir=cfg.rec, local_rank=None)
+    trainset = FaceDataset("feature_dir", "/home2/tanminh/FIQA/dict_name_features.npy")
     dataloader = DataLoader(trainset, cfg.batch_size, shuffle=False,
                             num_workers=cfg.num_workers, drop_last=True)
 
-    backbone = iresnet160(False)
-    backbone.load_state_dict(torch.load("/home1/data/tanminh/Face_Recognize_Quaility_Assessment/r160_imintv4_statedict.pth"))
+    # backbone = iresnet160(False)
+    # backbone.load_state_dict(torch.load("/home1/data/tanminh/Face_Recognize_Quaility_Assessment/r160_imintv4_statedict.pth"))
 
-    head = Head_Cls(512, 1)
-
-    backbone.cuda() 
+    backbone = ONNX_IMINT("/home2/tanminh/FIQA/pretrained/stacking_avg_r160+ada-unnorm-stacking-ada-1.6.onnx")
+    head = Head_Cls(1024, 1)
+ 
     head.cuda() 
 
     if cfg.resume: 
         print("[INFO] Resume. Loading last chk...")
         head.load_state_dict(torch.load(cfg.resume_head))
-        backbone.load_state_dict(torch.load(cfg.resume_backbone))
 
-    backbone.eval() 
-    for p in backbone.parameters():
-        p.requires_grad = False 
     
-    head.train() 
-    backbone.eval() 
+    head.train()  
 
     FR_loss= losses.CR_FIQA_LOSS_ONTOP(
         device= "cuda",
@@ -105,30 +101,22 @@ def main():
 
 
     for epoch in range(start_epoch, cfg.num_epoch):
-        for index, (img, img_tensor, label) in enumerate(dataloader):
+        for index, (embedding, label) in enumerate(dataloader):
+
             global_step += 1
-            img_tensor = img_tensor.cuda()
+            embedding = embedding.to("cuda")
             label = label.cuda()
             # print("index: ", index)
-            features= backbone(img_tensor)
+            features= embedding
             qs = head(features)
             thetas, index_nq, ccs,nnccs = FR_loss(features, label)
-            if len(index_nq) > 0: 
-                import numpy as np 
-                save_img = img[index_nq].detach().cpu().numpy()
-                print(index, len(index_nq))
-                np.save(f"low_quality_images/{index}_low_quality", save_img)
-                np.save(f"low_quality_images/{index}_low_quality_features", features.detach().cpu().numpy())
-                np.save(f"low_quality_images/{index}_index_low_quality", index_nq.detach().cpu().numpy())
-                np.save(f"low_quality_images/{index}_label_low_quality", label.detach().cpu().numpy())
-            # print(qs)
-            # print(ccs/ (nnccs + 1 + 1e-9))
-            ref_score = torch.sigmoid((ccs - nnccs) * 2/ (nnccs + 1 + 1e-9))
-            qs = torch.sigmoid(qs)
+
+            ref_score = ((ccs)/ (nnccs + 1 + 1e-9))
+            qs = (qs)
             loss_qs=criterion_qs(ref_score,qs)
             loss_v = 100 * loss_qs
             loss_v.backward()
-            clip_grad_norm_(backbone.parameters(), max_norm=5, norm_type=2)
+            clip_grad_norm_(head.parameters(), max_norm=5, norm_type=2)
 
             opt_head.step()
 

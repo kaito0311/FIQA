@@ -66,8 +66,8 @@ class CR_FIQA_LOSS_ONTOP():
         self.device = device
         self.s = s
         self.m = m
-        self.kernel = torch.from_numpy(
-            np.load("/home1/data/tanminh/CR-FIQA/mean.npy").T).to(self.device)
+        self.mean = np.load("/home2/tanminh/FIQA/data/mean.npy").astype(np.float32)
+        self.kernel = torch.from_numpy(self.mean.T).to(self.device)
         # nn.init.normal_(self.kernel, std=0.01)
 
     def __call__(self, embbedings, label):

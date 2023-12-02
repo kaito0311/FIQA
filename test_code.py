@@ -4,10 +4,80 @@ import time
 import cv2
 import torch 
 import numpy as np 
-import mxnet as mx 
-from mxnet import ndarray as nd
+# import mxnet as mx 
+# from mxnet import ndarray as nd
 import pickle 
+
 from backbones.iresnet_imintv5 import iresnet160
+
+
+
+
+
+
+
+
+
+diction = np.load("dict_name_features.npy", allow_pickle= True).item()
+mean = np.load("./data/mean.npy", allow_pickle= True)
+
+name_id = list(diction.keys())[0]
+feature  = np.load("./feature_dir/" + str(name_id) + ".npy")
+
+
+cos_theta = feature @ mean.T
+
+
+pass 
+
+
+
+
+
+
+
+
+
+exit() 
+
+
+
+class FaceDataset():
+    def __init__(self, feature_dir, path_dict) -> None:
+        super().__init__()
+        self.feature_dir = feature_dir 
+        self.dict = np.load(path_dict, allow_pickle= True).item() 
+        self.list_name = [] 
+        self.list_id = []
+    
+    def prepare(self):
+        for key in self.dict.keys():
+            self.list_name = self.list_name + self.dict[key] 
+            self.list_id = self.list_id + [key] * len(self.dict[key])
+        print(len(self.list_name))
+        print(len(self.list_id))
+        assert len(self.list_name) == len(self.list_id) 
+    
+    def __getitem__(self, index):
+        name_image = self.list_name[index] 
+        list_file:list = self.dict[self.list_id[index]]
+        idx = list_file.index(name_image)
+
+        embedding = np.load(os.path.join(self.feature_dir, str(self.list_id[index]) + ".npy"))[idx]
+
+        return embedding 
+    def __len__(self):
+        return len(self.list_name)
+ 
+
+dataset = FaceDataset("feature_dir", "/home2/tanminh/FIQA/dict_name_features.npy")
+
+dataset.prepare() 
+
+embed = dataset[10]
+print(embed.shape)
+
+
 # import losses 
 
 # embeddings = torch.rand(4, 512).to("cpu")
@@ -19,6 +89,25 @@ from backbones.iresnet_imintv5 import iresnet160
 
 # print(ccs)
 # print(nnccs)
+
+
+
+# dict = np.load("/home2/tanminh/FIQA/dict_name_features.npy", allow_pickle= True)
+
+# dict = dict.item() 
+
+# print(dict.keys())
+# print(dict["2_3_0110870"])
+
+# features= np.load("/home2/tanminh/FIQA/feature_dir/0_3_0091257.npy")
+# print(features)
+# print(features.shape)
+
+
+
+
+
+exit() 
 
 for idx_source in range(1,144):
     if idx_source in [7,11]:
