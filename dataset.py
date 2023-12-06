@@ -6,6 +6,7 @@ import threading
 import mxnet as mx
 import numpy as np
 import torch
+from tqdm import tqdm
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
@@ -81,7 +82,8 @@ class MXFaceDataset(Dataset):
         self.local_rank = local_rank
         path_imgrec = os.path.join(root_dir, 'train.rec')
         path_imgidx = os.path.join(root_dir, 'train.idx')
-        self.imgrec = mx.recordio.MXIndexedRecordIO(path_imgidx, path_imgrec, 'r')
+        self.imgrec = mx.recordio.MXIndexedRecordIO(
+            path_imgidx, path_imgrec, 'r')
         s = self.imgrec.read_idx(0)
         header, _ = mx.recordio.unpack(s)
         if header.flag > 0:
@@ -105,35 +107,52 @@ class MXFaceDataset(Dataset):
     def __len__(self):
         return len(self.imgidx)
 
+
 class FaceDataset(Dataset):
-    def __init__(self, feature_dir, path_dict) -> None:
+    def __init__(self, feature_dir, path_dict, save_listed=True, path_list_name="list_name.npy", path_list_id="list_id.npy") -> None:
         super().__init__()
-        self.feature_dir = feature_dir 
-        self.dict = np.load(path_dict, allow_pickle= True).item() 
-        self.list_name = [] 
+        self.feature_dir = feature_dir
+        self.dict = np.load(path_dict, allow_pickle=True).item()
+        self.list_name = []
         self.list_id = []
         self.list_name_uni_id = list(self.dict.keys())
+        self.path_list_name = path_list_name
+        self.path_list_id = path_list_id
+        self.save_listed = save_listed
         self.prepare()
-        
-    
+
     def prepare(self):
-        for key in self.dict.keys():
-            self.list_name = self.list_name + self.dict[key] 
+        if os.path.isfile(self.path_list_id):
+            self.list_name = np.load(self.path_list_name)
+            self.list_id = np.load(self.path_list_id)
+            assert len(self.list_name) == len(self.list_id)
+            if len(set(self.list_id)) == len(self.list_name_uni_id):
+                return 
+            
+        for key in tqdm(self.dict.keys()):
+            self.list_name = self.list_name + self.dict[key]
             self.list_id = self.list_id + [key] * len(self.dict[key])
         print(len(self.list_name))
         print(len(self.list_id))
-        assert len(self.list_name) == len(self.list_id) 
-    
+        if self.save_listed:
+            np.save(self.path_list_name, self.list_name)
+            np.save(self.path_list_id, self.list_id)
+        assert len(self.list_name) == len(self.list_id)
+
     def __getitem__(self, index):
         name_image = self.list_name[index]
         name_id = self.list_id[index]
-        list_file:list = self.dict[name_id]
-        
-        idx = list_file.index(name_image)
-        
-        embedding = np.load(os.path.join(self.feature_dir, str(name_id) + ".npy"))[idx]
+        list_file: list = self.dict[name_id]
 
-        return torch.Tensor(embedding.astype(np.float32)), torch.tensor(self.list_name_uni_id.index(self.list_id[index]), dtype= torch.long)
+        idx = list_file.index(name_image)
+
+        embedding = np.load(os.path.join(
+            self.feature_dir, str(name_id) + ".npy"))[idx]
+        
+        if np.random.rand() < 0.5:
+            embedding = embedding + np.random.normal(loc= 0, scale= 0.1, size=embedding.shape)
+
+        return name_id, name_image, torch.Tensor(embedding.astype(np.float32)), torch.tensor(self.list_name_uni_id.index(self.list_id[index]), dtype=torch.long)
+
     def __len__(self):
         return len(self.list_name)
-

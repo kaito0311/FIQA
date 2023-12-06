@@ -62,12 +62,13 @@ class CR_FIQA_LOSS_ONTOP():
             cos(theta+m)
         """
 
-    def __init__(self, device="cuda", s=64.0, m=0.50):
+    def __init__(self, path_mean="/home2/tanminh/FIQA/data/mean_cluster.npy", device="cuda", s=64.0, m=0.50):
         self.device = device
         self.s = s
         self.m = m
-        self.mean = np.load("/home2/tanminh/FIQA/data/mean.npy").astype(np.float32)
+        self.mean = np.load(path_mean).astype(np.float32)
         self.kernel = torch.from_numpy(self.mean.T).to(self.device)
+        print("[INFO] size kernel: ", self.kernel.size())
         # nn.init.normal_(self.kernel, std=0.01)
 
     def __call__(self, embbedings, label):
@@ -81,21 +82,15 @@ class CR_FIQA_LOSS_ONTOP():
         # m_hot.scatter_(1, label[index, None], self.m)
         distmat = cos_theta[index, label.view(-1)].detach().clone()
         max_negative_cloned = cos_theta.detach().clone()
-        max_negative_cloned[index, label.view(-1)] = -1e-12 
+        max_negative_cloned[index, label.view(-1)] = -1e-12
         max_negative, _ = max_negative_cloned.max(dim=1)
         max_negative = max_negative.clamp(-1, 1)
         # print(distmat[:10])
         # print(max_negative[:10])
         divi = (distmat/(max_negative+1+1e-9))
         # print(divi[:10])
-        sub = distmat - max_negative 
-        index_neq= torch.where(sub < 0)[0] 
-        # if len(index_neq > 0):
-        #     print("neq: ", distmat[index_neq])
-        #     print("neq: ", max_negative[index_neq])
-        #     print("divi: ", divi[index_neq])
-        #     import time 
-        #     time.sleep(10)
+        sub = distmat - max_negative
+        index_neq = torch.where(sub < 0)[0]
         # cos_theta.acos_()
         # cos_theta[index] += m_hot
         # cos_theta.cos_().mul_(self.s)

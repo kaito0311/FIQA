@@ -7,3 +7,4 @@ low_quality_images/
 output/
 pretrained/
 venv/
+not_push_dir/

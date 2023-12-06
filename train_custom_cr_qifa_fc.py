@@ -60,7 +60,10 @@ def cosine_lr(optimizer, base_lrs, warmup_length, steps):
 class Head_Cls(torch.nn.Module):
     def __init__(self, in_features=512, out_features=1) -> None:
         super().__init__()
-        self.qs = torch.nn.Linear(in_features, out_features)
+        self.middle = torch.nn.Linear(in_features, 128)
+        self.leaky = torch.nn.LeakyReLU(negative_slope=0.1)
+        self.dropout = torch.nn.Dropout(p=0.4)
+        self.qs = torch.nn.Linear(128, out_features)
 
         for m in self.modules():
             if isinstance(m, torch.nn.Conv2d):
@@ -70,6 +73,9 @@ class Head_Cls(torch.nn.Module):
                 torch.nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
+        x = self.middle(x) 
+        x = self.leaky(x)
+        x = self.dropout(x) 
         return self.qs(x)
 
 
@@ -118,7 +124,7 @@ def main():
     # lr=cfg.lr,
     # momentum=0.9, weight_decay=cfg.weight_decay)
 
-    criterion = F.kl_div
+    criterion = CrossEntropyLoss()
     def smooth_l1_loss(x, y, scale_loss = None, beta=0.5): 
         sub = torch.abs(x - y) 
 

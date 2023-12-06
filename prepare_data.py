@@ -44,12 +44,13 @@ class FaceDataset(Dataset):
 
         self.list_path = []
         self.list_id = []
-        for name_id in (list_unique_id):
+        print("[INFO] Process list name")
+        for name_id in tqdm(list_unique_id):
             self.list_path = self.list_path + \
                 glob.glob(os.path.join(self.root_dir, name_id) + "/*.jpg")
             self.list_id = self.list_id + [name_id] * len(os.listdir(os.path.join(self.root_dir, name_id))
                                                           )
-
+        print("Done!!!")
         assert len(self.list_id) == len(self.list_path)
 
     def __getitem__(self, index):
@@ -86,7 +87,7 @@ if __name__ == "__main__":
     features_dir = "feature_dir"
     os.makedirs(features_dir, exist_ok= True)
     dataset = FaceDataset(
-        num_ids=5000, root_dir="/home1/webface_260M/unzip_folder/WebFace260M", feature_dirs=features_dir)
+        num_ids=100000, root_dir="/home1/webface_260M/unzip_folder/WebFace260M", feature_dirs=features_dir)
     dataset.prepare_data()
 
     dataloader = DataLoader(

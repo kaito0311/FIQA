@@ -83,7 +83,8 @@ class CallBackLogging(object):
                 if self.writer is not None:
                     self.writer.add_scalar('time_for_end', time_for_end, global_step)
                     self.writer.add_scalar('loss', loss.avg, global_step)
-                msg = "Speed %.2f samples/sec   Loss %.4f Margin %.4f Center %.4f Epoch: %d   Global Step: %d Lr: %.4f  Required: %1.f hours" % (
+                print("learning rate: ", lr) 
+                msg = "Speed %.2f samples/sec   Loss %.4f Margin %.4f Center %.4f Epoch: %d   Global Step: %d Lr: %f  Required: %1.f hours" % (
                     speed_total, loss.avg, std, center,epoch, global_step, lr, time_for_end
                 )
                 logging.info(msg)

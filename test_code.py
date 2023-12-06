@@ -7,15 +7,161 @@ import numpy as np
 # import mxnet as mx 
 # from mxnet import ndarray as nd
 import pickle 
+from tqdm import tqdm 
 
 from backbones.iresnet_imintv5 import iresnet160
 
 
 
 
+noise = np.random.uniform(low=0, high=0.1, size=(1024,))
+
+def take_mean_and_feature(name_id, name_image, path_mean, path_dict, path_feature): 
+    diction = np.load(path_dict, allow_pickle= True).item() 
+    
+    idx = list(diction.keys()).index(name_id) 
+    mean = np.load(path_mean) 
+    mean = mean / np.linalg.norm(mean, axis=1).reshape(-1, 1)
+
+    X = np.load(os.path.join(path_feature, name_id + ".npy"))
+    X = X / np.linalg.norm(X, axis=1).reshape(-1, 1) 
+    idx_img = list(diction[name_id]).index(name_image)
+    return mean[idx], X[idx_img]
+
+
+def add_noise(feature, mean): 
+    feature_nose = feature + noise 
+    mean = mean / np.linalg.norm(mean) 
+    feature = feature / np.linalg.norm(feature) 
+    feature_nose = feature_nose / np.linalg.norm(feature_nose) 
+    
+    before = np.dot(mean, feature.T)
+    after =  np.dot(mean, feature_nose.T)
+    print("before: ", before)
+    print("after: ", after)
+    print("change level: ", 1 - after / before) 
+    
+    return 
+
+mean_, feature_ = take_mean_and_feature(
+    name_id="8_3_0118939", 
+    name_image="8_2458468.jpg", 
+    path_dict="/home2/tanminh/FIQA/dict_name_features.npy", 
+    path_mean="/home2/tanminh/FIQA/data/mean_cluster_threshol_5e-1.npy",
+    path_feature="/home2/tanminh/FIQA/feature_dir"
+)
+print(feature_.shape)
+add_noise(feature_, mean_)
+
+mean_, feature_ = take_mean_and_feature(
+    name_id="0_0_0011266", 
+    name_image="0_228043.jpg", 
+    path_dict="/home2/tanminh/FIQA/dict_name_features.npy", 
+    path_mean="/home2/tanminh/FIQA/data/mean_cluster_threshol_5e-1.npy",
+    path_feature="/home2/tanminh/FIQA/feature_dir"
+)
+
+add_noise(feature_, mean_)
 
 
 
+
+
+
+
+
+
+
+
+exit() 
+
+diction = np.load("dict_name_features.npy", allow_pickle= True).item()
+
+idx= list(diction.keys()).index("0_3_0100996")
+print(idx)
+
+mean = np.load("/home2/tanminh/FIQA/data/mean_cluster.npy")
+mean = mean / np.linalg.norm(mean, axis=1).reshape(-1, 1) 
+
+X = np.load(os.path.join("feature_dir", "0_3_0100996.npy"))
+print(X.shape)
+X = X + np.random.normal(loc=0, scale=0.1, size=X.shape)
+X = X / np.linalg.norm(X, axis=1).reshape(-1, 1) 
+
+result = np.dot(mean[1], X[6].T)
+print(result)
+
+result = np.dot(mean[1], X[7].T)
+print(result)
+result = np.dot(mean[1], X[9].T)
+print(result)
+result = np.dot(mean[1], X[11].T)
+print(result)
+result = np.dot(mean[1], X[13].T)
+print(result)
+exit() 
+
+
+# import numpy as np
+# from numba import njit
+# from numba.core import types
+# from numba.typed import Dict
+
+# # The Dict.empty() constructs a typed dictionary.
+# # The key and value typed must be explicitly declared.
+# d = Dict.empty(
+#     key_type=types.unicode_type,
+#     value_type=types.List(types.unicode_type),
+# )
+
+# d["haha"]= ["amkc", "amvkda"]
+
+# exit() 
+
+
+list_name = [] 
+list_id = [] 
+
+diction = np.load("/home2/tanminh/FIQA/dict_name_features.npy", allow_pickle=True).item()
+
+for key in tqdm(diction.keys()):
+    list_name.extend(diction[key]) 
+    list_id.extend([key] * len(diction[key]))
+
+np.save("list_name.npy", list_name) 
+np.save("list_id.npy", list_id) 
+
+
+
+
+
+
+
+
+
+exit() 
+
+features = np.load("/home2/tanminh/FIQA/feature_dir/0_3_0100996.npy")
+diction = np.load("/home2/tanminh/FIQA/dict_name_features.npy", allow_pickle=True).item()["0_3_0100996"]
+features = features / np.linalg.norm(features, axis= 1).reshape(-1, 1)
+print(features.shape) 
+count = 0
+for feature in features:
+    print("Score ", count, diction[count]) 
+    for f in features: 
+        print(np.sqrt(np.sum((feature - f)**2)))
+    count += 1 
+
+
+
+
+
+
+
+
+
+
+exit() 
 
 
 diction = np.load("dict_name_features.npy", allow_pickle= True).item()
