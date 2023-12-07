@@ -150,7 +150,7 @@ class FaceDataset(Dataset):
             self.feature_dir, str(name_id) + ".npy"))[idx]
         
         if np.random.rand() < 0.5:
-            embedding = embedding + np.random.normal(loc= 0, scale= 0.1, size=embedding.shape)
+            embedding = embedding + np.random.normal(loc= 0, scale= 0.2, size=embedding.shape)
 
         return name_id, name_image, torch.Tensor(embedding.astype(np.float32)), torch.tensor(self.list_name_uni_id.index(self.list_id[index]), dtype=torch.long)
 

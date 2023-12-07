@@ -7,7 +7,7 @@ config.momentum = 0.9
 config.weight_decay = 5e-4
 config.batch_size = 128 # batch size per GPU
 config.lr = 1e-3
-config.output = "output/pure_L1_add_noise_ngaongo" # train evaluation output folder
+config.output = "output/KL_from_scratch" # train evaluation output folder
 config.s=64.0
 config.m=0.50
 config.beta=0.5
@@ -15,7 +15,7 @@ config.num_workers = 4
 config.device= "cuda"
 
 config.resume = False
-config.resume_head = "/home2/tanminh/FIQA/output/R50_CRFIQA_ORI_100k_id/9000header.pth"
+config.resume_head = "/home2/tanminh/FIQA/output/pure_L1_add_noise_ngaongo_them_kldiv/271000header.pth"
 config.resume_backbone = "/home1/data/tanminh/FIQA/output/R50_CRFIQA/18000backbone.pth"
 config.global_step=0 # step to resume
 

@@ -14,17 +14,17 @@ from backbones.iresnet_imintv5 import iresnet160
 
 
 
-noise = np.random.uniform(low=0, high=0.1, size=(1024,))
+noise = np.random.uniform(low=0, high=0.2, size=(1024,))
 
 def take_mean_and_feature(name_id, name_image, path_mean, path_dict, path_feature): 
     diction = np.load(path_dict, allow_pickle= True).item() 
     
     idx = list(diction.keys()).index(name_id) 
     mean = np.load(path_mean) 
-    mean = mean / np.linalg.norm(mean, axis=1).reshape(-1, 1)
+    # mean = mean / np.linalg.norm(mean, axis=1).reshape(-1, 1)
 
     X = np.load(os.path.join(path_feature, name_id + ".npy"))
-    X = X / np.linalg.norm(X, axis=1).reshape(-1, 1) 
+    # X = X / np.linalg.norm(X, axis=1).reshape(-1, 1) 
     idx_img = list(diction[name_id]).index(name_image)
     return mean[idx], X[idx_img]
 

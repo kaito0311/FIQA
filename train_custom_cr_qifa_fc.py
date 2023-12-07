@@ -53,7 +53,7 @@ def cosine_lr(optimizer, base_lrs, warmup_length, steps):
                 es = steps - warmup_length
                 lr = 0.5 * (1 + np.cos(np.pi * e / es)) * base_lr
             assign_learning_rate(param_group, lr)
-        return lr 
+        return lr
     return _lr_adjuster
 
 
@@ -73,9 +73,9 @@ class Head_Cls(torch.nn.Module):
                 torch.nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
-        x = self.middle(x) 
+        x = self.middle(x)
         x = self.leaky(x)
-        x = self.dropout(x) 
+        x = self.dropout(x)
         return self.qs(x)
 
 
@@ -125,19 +125,19 @@ def main():
     # momentum=0.9, weight_decay=cfg.weight_decay)
 
     criterion = CrossEntropyLoss()
-    def smooth_l1_loss(x, y, scale_loss = None, beta=0.5): 
-        sub = torch.abs(x - y) 
 
-        score = torch.where(sub < beta, 0.5 * sub **2 / beta, sub - 0.5 * beta) 
+    def smooth_l1_loss(x, y, scale_loss=None, beta=0.5):
+        sub = torch.abs(x - y)
 
-        if scale_loss is not None: 
-            score = score * scale_loss 
-        
-        return torch.mean(score) 
+        score = torch.where(sub < beta, 0.5 * sub **
+                            2 / beta, sub - 0.5 * beta)
+
+        if scale_loss is not None:
+            score = score * scale_loss
+
+        return torch.mean(score)
 
     criterion_qs = torch.nn.L1Loss()
-
-        
 
     start_epoch = 0
     total_step = int(len(trainset) / cfg.batch_size * cfg.num_epoch)
@@ -159,10 +159,10 @@ def main():
     for epoch in range(start_epoch, cfg.num_epoch):
         for index, (list_id, list_name_image, embedding, label) in enumerate(dataloader):
 
-            global_step += 1 
-            lr= scheduler_header(global_step)
+            global_step += 1
+            lr = scheduler_header(global_step)
             # print("learning rate: ", lr, get_lr(opt_head))
-        
+
             list_id = list(list_id)
             list_name_image = list(list_name_image)
 
@@ -209,9 +209,23 @@ def main():
             # exit()
             # ''''''
 
-            def scale_loss(score): 
+            def scale_loss(score):
                 return torch.where(score < 1, 10 * (1 - score), 1)
+            
+            def compute_emd(p, q):
+                p = torch.argsort(p) 
+                q = torch.argsort(q) 
+                p = p / torch.sum(p) 
+                q = q / torch.sum(q)
 
+                # Tính toán cumulative sums
+                cum_p = torch.cumsum(p, dim=1)
+                cum_q = torch.cumsum(q, dim=1)
+
+                # Tính toán Earth Mover's Distance
+                emd = torch.norm(cum_p - cum_q, p=1, dim=1).mean()
+
+                return emd - 1 
 
             # ref_score = ((ccs) / (nnccs + 1 + 1e-9))
             ref_score = (ccs)
@@ -219,11 +233,21 @@ def main():
             # loss_qs = smooth_l1_loss(ref_score, qs ,scale_loss(ref_score), beta=0.5)
             # loss_qs = smooth_l1_loss(ref_score, qs , None, beta=0.5)
             loss_qs = criterion_qs(qs, ref_score)
-            loss_v = 100 * loss_qs 
+            # print(qs.reshape(1, -1).size())
+            softmax_qs = F.log_softmax(qs.reshape(1, -1), dim=1)
+            softmax_ref_score = F.softmax(ref_score.reshape(1, -1), dim=1)
+
+            loss_kl = F.kl_div(softmax_qs, softmax_ref_score, log_target=True)
+            # loss_kl = compute_emd(softmax_qs, softmax_ref_score)
+
+            # exit()
+
+            loss_v = 10* loss_qs + 4 * loss_kl
             loss_v.backward()
             if global_step % 10 == 0:
                 print("ref_score: ", ref_score[:10])
                 print("qs score: ", qs[:10])
+                print("loss KL: ", loss_kl)
 
             clip_grad_norm_(head.parameters(), max_norm=5, norm_type=2)
 
@@ -238,7 +262,6 @@ def main():
             # callback_verification(global_step, backbone)
             if global_step % 1000 == 0:
                 callback_checkpoint(global_step, backbone, head)
-
 
         callback_checkpoint(global_step, backbone, head)
 
