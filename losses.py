@@ -62,18 +62,20 @@ class CR_FIQA_LOSS_ONTOP():
             cos(theta+m)
         """
 
-    def __init__(self, path_mean="/home2/tanminh/FIQA/data/mean_cluster.npy", device="cuda", s=64.0, m=0.50):
+    def __init__(self, path_mean, path_std, device="cuda", s=64.0, m=0.50):
         self.device = device
         self.s = s
         self.m = m
         self.mean = np.load(path_mean).astype(np.float32)
         self.kernel = torch.from_numpy(self.mean.T).to(self.device)
+        self.std = np.load(path_std).astype(np.float32)
+        self.std = torch.from_numpy(self.std.T).to(self.device) 
 
-        
         print("[INFO] size kernel: ", self.kernel.size())
         # nn.init.normal_(self.kernel, std=0.01)
 
     def __call__(self, embbedings, label):
+        embbedings = (embbedings - self.kernel.T[label]) / self.std.T[label] 
         embbedings = l2_norm(embbedings, axis=1)
         kernel_norm = l2_norm(self.kernel, axis=0)
         cos_theta = torch.mm(embbedings, kernel_norm)

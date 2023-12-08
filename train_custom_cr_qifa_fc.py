@@ -116,7 +116,8 @@ def main():
     head.train()
 
     FR_loss = losses.CR_FIQA_LOSS_ONTOP(
-        path_mean="/home2/tanminh/FIQA/data/mean_cluster_threshol_5e-1.npy",
+        path_mean="/home2/tanminh/FIQA/data/mean_cluster.npy",
+        path_std="/home2/tanminh/FIQA/data/std_cluster.npy",
         device="cuda",
     )
 
@@ -139,6 +140,7 @@ def main():
         return torch.mean(score)
 
     criterion_qs = torch.nn.L1Loss()
+    rank_loss_func = torch.nn.BCELoss() 
 
     start_epoch = 0
     total_step = int(len(trainset) / cfg.batch_size * cfg.num_epoch)
@@ -176,7 +178,7 @@ def main():
             thetas, index_nq, ccs, nnccs = FR_loss(features, label)
             # print(ccs.shape)
             # print(mean_distance.shape)
-            ccs = ccs - mean_distance / 2
+            ccs = ccs
 
             # if len(index_nq) > 0:
 
@@ -216,30 +218,24 @@ def main():
 
             # exit()
             ''''''
+            def prev_sub(q):
+                prev = torch.empty_like(q.reshape(1, -1))
+                prev[0][0:-1] = q.reshape(1, -1).clone()[0][1:]
+                prev[0][-1] = q.reshape(1, -1)[0][0] 
+                return prev 
+        
 
-            def scale_loss(score):
-                return torch.where(score < 1, 10 * (1 - score), 1)
+            ccs_sub1 = prev_sub(ccs) # shape (1, bs)
+            y_truth = torch.where((ccs_sub1[0] - ccs.reshape(1, 128)[0]) < 0, 0.0, 1.0)
 
-            def compute_emd(p, q):
-                p = torch.argsort(p)
-                q = torch.argsort(q)
-                p = p / torch.sum(p)
-                q = q / torch.sum(q)
+            qs_sub = prev_sub(qs) 
+            y_pred = qs_sub[0] - qs.reshape(1, 128)[0]
+            y_pred = torch.exp(y_pred) 
+            y_pred = y_pred / (y_pred + 1)
+            bce_loss = rank_loss_func(y_pred, y_truth)
 
-                # Tính toán cumulative sums
-                cum_p = torch.cumsum(p, dim=1)
-                cum_q = torch.cumsum(q, dim=1)
+            
 
-                # Tính toán Earth Mover's Distance
-                emd = torch.norm(cum_p - cum_q, p=1, dim=1).mean()
-
-                return emd - 1
-
-            def rank_loss(p, q):
-                p = torch.argsort(p.reshape(1, -1)) * 1.0
-                q = torch.argsort(q.reshape(1, -1)) * 1.0
-                sub = torch.abs(p - q)
-                return torch.norm(sub, dim=1).mean()
 
             # ref_score = ((ccs) / (nnccs + 1 + 1e-9))
             ref_score = (ccs)
@@ -248,21 +244,23 @@ def main():
             # loss_qs = smooth_l1_loss(ref_score, qs , None, beta=0.5)
             loss_qs = criterion_qs(qs, ref_score)
             # print(qs.reshape(1, -1).size())
-            softmax_qs = F.log_softmax(qs.reshape(1, -1), dim=1)
-            softmax_ref_score = F.softmax(ref_score.reshape(1, -1), dim=1)
+            # softmax_qs = F.log_softmax(qs.reshape(1, -1), dim=1)
+            # softmax_ref_score = F.softmax(ref_score.reshape(1, -1), dim=1)
 
-            loss_kl = F.kl_div(softmax_qs, softmax_ref_score, log_target=True)
+            # loss_kl = F.kl_div(softmax_qs, softmax_ref_score, log_target=True)
             # loss_kl = rank_loss(ref_score, qs)
             # loss_kl = compute_emd(softmax_qs, softmax_ref_score)
 
             # exit()
 
-            loss_v = 10 * loss_qs + 1.0 * loss_kl
+            loss_v = 10 * loss_qs + 4 * bce_loss
             loss_v.backward()
             if global_step % 10 == 0:
                 print("ref_score: ", ref_score[:10])
                 print("qs score: ", qs[:10])
-                print("loss KL: ", loss_kl)
+                # print("loss KL: ", loss_kl)
+                print("bce loss: ", bce_loss)
+
 
             clip_grad_norm_(head.parameters(), max_norm=5, norm_type=2)
 
