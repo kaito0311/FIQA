@@ -7,4 +7,4 @@ OMP_NUM_THREADS=4 CUDA_VISIBLE_DEVICES=5 python preprocess_data.py
 OMP_NUM_THREADS=4 CUDA_VISIBLE_DEVICES=5 python train_custom_cr_qifa.py
 
 OMP_NUM_THREADS=4 CUDA_VISIBLE_DEVICES=4 python prepare_data.py
-OMP_NUM_THREADS=4 CUDA_VISIBLE_DEVICES=4 python train_custom_cr_qifa.py
+OMP_NUM_THREADS=4 CUDA_VISIBLE_DEVICES=2 python train_custom_cr_qifa.py

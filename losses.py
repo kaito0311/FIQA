@@ -68,6 +68,8 @@ class CR_FIQA_LOSS_ONTOP():
         self.m = m
         self.mean = np.load(path_mean).astype(np.float32)
         self.kernel = torch.from_numpy(self.mean.T).to(self.device)
+
+        
         print("[INFO] size kernel: ", self.kernel.size())
         # nn.init.normal_(self.kernel, std=0.01)
 

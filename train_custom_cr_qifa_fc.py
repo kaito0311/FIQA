@@ -95,8 +95,9 @@ def main():
     init_logging(log_root, 0, cfg.output)
 
     trainset = FaceDataset(
-        "feature_dir", "/home2/tanminh/FIQA/dict_name_features.npy")
-    dataloader = DataLoader(trainset, cfg.batch_size, shuffle=True,
+        "feature_dir", "/home2/tanminh/FIQA/dict_name_features.npy",
+        path_dict_mean_distance="/home2/tanminh/FIQA/data/diction_mean_cluster_thresh_5e-1.npy")
+    dataloader = DataLoader(trainset, cfg.batch_size, shuffle=False,
                             num_workers=cfg.num_workers, drop_last=True)
 
     # backbone = iresnet160(False)
@@ -115,7 +116,7 @@ def main():
     head.train()
 
     FR_loss = losses.CR_FIQA_LOSS_ONTOP(
-        path_mean="/home2/tanminh/FIQA/data/mean_cluster.npy",
+        path_mean="/home2/tanminh/FIQA/data/mean_cluster_threshol_5e-1.npy",
         device="cuda",
     )
 
@@ -157,7 +158,7 @@ def main():
     global_step = cfg.global_step
 
     for epoch in range(start_epoch, cfg.num_epoch):
-        for index, (list_id, list_name_image, embedding, label) in enumerate(dataloader):
+        for index, (list_id, list_name_image, embedding, label, mean_distance) in enumerate(dataloader):
 
             global_step += 1
             lr = scheduler_header(global_step)
@@ -168,10 +169,14 @@ def main():
 
             embedding = embedding.to("cuda")
             label = label.cuda()
+            mean_distance = torch.unsqueeze(mean_distance, 1).cuda()
             # print("index: ", index)
             features = embedding
             qs = head(features)
             thetas, index_nq, ccs, nnccs = FR_loss(features, label)
+            # print(ccs.shape)
+            # print(mean_distance.shape)
+            ccs = ccs - mean_distance / 2
 
             # if len(index_nq) > 0:
 
@@ -186,8 +191,11 @@ def main():
             #         path_image = os.path.join(root_dir, id, name)
             #         cmd = f"cp {path_image} {os.path.join(save_dir, str(id) + '-' + str(name))}"
             #         os.system(cmd)
+            # print(mean_distance)
+            # print(mean_distance.size())
+            # exit()
 
-            # ''''''
+            ''''''
             # copy_ccs = ccs.detach().cpu().numpy()
             # copy_nnccs = nnccs.detach().cpu().numpy()
 
@@ -207,15 +215,15 @@ def main():
             #     count_idx += 1
 
             # exit()
-            # ''''''
+            ''''''
 
             def scale_loss(score):
                 return torch.where(score < 1, 10 * (1 - score), 1)
-            
+
             def compute_emd(p, q):
-                p = torch.argsort(p) 
-                q = torch.argsort(q) 
-                p = p / torch.sum(p) 
+                p = torch.argsort(p)
+                q = torch.argsort(q)
+                p = p / torch.sum(p)
                 q = q / torch.sum(q)
 
                 # Tính toán cumulative sums
@@ -225,7 +233,13 @@ def main():
                 # Tính toán Earth Mover's Distance
                 emd = torch.norm(cum_p - cum_q, p=1, dim=1).mean()
 
-                return emd - 1 
+                return emd - 1
+
+            def rank_loss(p, q):
+                p = torch.argsort(p.reshape(1, -1)) * 1.0
+                q = torch.argsort(q.reshape(1, -1)) * 1.0
+                sub = torch.abs(p - q)
+                return torch.norm(sub, dim=1).mean()
 
             # ref_score = ((ccs) / (nnccs + 1 + 1e-9))
             ref_score = (ccs)
@@ -238,11 +252,12 @@ def main():
             softmax_ref_score = F.softmax(ref_score.reshape(1, -1), dim=1)
 
             loss_kl = F.kl_div(softmax_qs, softmax_ref_score, log_target=True)
+            # loss_kl = rank_loss(ref_score, qs)
             # loss_kl = compute_emd(softmax_qs, softmax_ref_score)
 
             # exit()
 
-            loss_v = 10* loss_qs + 4 * loss_kl
+            loss_v = 10 * loss_qs + 1.0 * loss_kl
             loss_v.backward()
             if global_step % 10 == 0:
                 print("ref_score: ", ref_score[:10])

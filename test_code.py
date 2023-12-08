@@ -14,6 +14,14 @@ from backbones.iresnet_imintv5 import iresnet160
 
 
 
+
+diction = np.load("data/diction_mean_cluster_thresh_5e-1.npy", allow_pickle= True).item() 
+
+values = [diction[k] for k in diction.keys()]
+print(len(values))
+print(np.max(values))
+
+exit()
 noise = np.random.uniform(low=0, high=0.2, size=(1024,))
 
 def take_mean_and_feature(name_id, name_image, path_mean, path_dict, path_feature): 

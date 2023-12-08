@@ -109,7 +109,7 @@ class MXFaceDataset(Dataset):
 
 
 class FaceDataset(Dataset):
-    def __init__(self, feature_dir, path_dict, save_listed=True, path_list_name="list_name.npy", path_list_id="list_id.npy") -> None:
+    def __init__(self, feature_dir, path_dict, path_dict_mean_distance = None, save_listed=True, path_list_name="list_name.npy", path_list_id="list_id.npy") -> None:
         super().__init__()
         self.feature_dir = feature_dir
         self.dict = np.load(path_dict, allow_pickle=True).item()
@@ -119,16 +119,22 @@ class FaceDataset(Dataset):
         self.path_list_name = path_list_name
         self.path_list_id = path_list_id
         self.save_listed = save_listed
+        self.path_dict_mean_distance = path_dict_mean_distance
+        self.dict_mean_distance = None 
         self.prepare()
 
     def prepare(self):
+
+        if self.path_dict_mean_distance is not None: 
+            self.dict_mean_distance = np.load(self.path_dict_mean_distance, allow_pickle= True).item() 
+
         if os.path.isfile(self.path_list_id):
             self.list_name = np.load(self.path_list_name)
             self.list_id = np.load(self.path_list_id)
             assert len(self.list_name) == len(self.list_id)
             if len(set(self.list_id)) == len(self.list_name_uni_id):
-                return 
-            
+                return
+
         for key in tqdm(self.dict.keys()):
             self.list_name = self.list_name + self.dict[key]
             self.list_id = self.list_id + [key] * len(self.dict[key])
@@ -149,10 +155,18 @@ class FaceDataset(Dataset):
         embedding = np.load(os.path.join(
             self.feature_dir, str(name_id) + ".npy"))[idx]
         
+        if self.dict_mean_distance is not None: 
+            mean_dis = self.dict_mean_distance[name_id]
+            mean_dis_tensor = torch.tensor(np.float32(mean_dis))
+        else:
+            mean_dis_tensor = 0.0 
+
         if np.random.rand() < 0.5:
             embedding = embedding + np.random.normal(loc= 0, scale= 0.2, size=embedding.shape)
 
-        return name_id, name_image, torch.Tensor(embedding.astype(np.float32)), torch.tensor(self.list_name_uni_id.index(self.list_id[index]), dtype=torch.long)
+        embedding_tensor = torch.Tensor(embedding.astype(np.float32))
+        label_tensor = torch.tensor(self.list_name_uni_id.index(self.list_id[index]), dtype=torch.long)
+        return name_id, name_image, embedding_tensor, label_tensor, mean_dis_tensor
 
     def __len__(self):
         return len(self.list_name)

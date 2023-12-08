@@ -35,7 +35,7 @@ from scipy.cluster.hierarchy import linkage, fcluster
 # print(dist_matrix[0][3])
 
 
-def clustering_data(X, threshold=0.7):
+def clustering_data(X, threshold=0.5):
     from numba import njit
     # @njit
 
@@ -60,16 +60,21 @@ def clustering_data(X, threshold=0.7):
 
     max_cluster_indices = [index for index, label in enumerate(
         labels) if label == max_cluster_index]
-
+    
+    print(dist_matrix.shape)
+    dis_avg_matrix = ((dist_matrix[max_cluster_indices]).T)[max_cluster_indices]
+    print(dis_avg_matrix.shape)
+    print(np.mean(dis_avg_matrix))
+    print(len(max_cluster_indices))
     return max_cluster_indices
 
-
+# 2_2_0079041-2_1628598
 X = np.load(os.path.join("feature_dir", "0_3_0100996.npy"))
 X = X / np.linalg.norm(X, axis=1).reshape(-1, 1)
 indexes = clustering_data(X)
 
-X_clus = X[indexes]
-mean = np.mean(X_clus, axis=0)
+# X_clus = X[indexes]
+# mean = np.mean(X_clus, axis=0)
 
-print(np.sqrt(np.sum((mean-X[6])**2)))
-print(np.dot(mean, X[6].T))
+# print(np.sqrt(np.sum((mean-X[6])**2)))
+# print(np.dot(mean, X[6].T))

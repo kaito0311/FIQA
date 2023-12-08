@@ -4,33 +4,67 @@ import cv2
 import numpy as np 
 
 
-path_txt = "/home2/tanminh/FIQA/note_score_shuffle.txt"
 
-data = None 
-with open(path_txt, 'r') as file:
-    data = file.readlines() 
+import os
+
+import cv2
+import matplotlib.pyplot as plt
+
+from tqdm import tqdm 
+
+def plot_images_with_scores(images, scores, num_cols=10, name_save="yeah.jpg"):
+    # Số lượng ảnh
+    num_images = len(images)
+
+    # Tính số dòng cần thiết
+    num_rows = num_images // num_cols + (num_images % num_cols > 0)
+
+    # Tạo figure và axes
+    fig, axs = plt.subplots(
+        num_rows, num_cols, figsize=(num_cols * 3, num_rows * 3))
+
+    # Duyệt qua từng ảnh và score tương ứng
+    for i, (image, score) in tqdm(enumerate(zip(images, scores))):
+        # Tính toán chỉ số dòng và cột tương ứng
+        row = i // num_cols
+        col = i % num_cols
+
+        # Hiển thị ảnh
+        axs[row, col].imshow(image)
+        axs[row, col].axis('off')  # Tắt các trục
+
+        # Hiển thị score dưới ảnh
+        axs[row, col].set_title(f'Score: {score}')
+
+    # Xóa các axes không sử dụng
+    for i in range(num_images, num_rows * num_cols):
+        fig.delaxes(axs.flatten()[i])
+
+    # Hiển thị figure
+    plt.show()
+
+    plt.savefig(name_save)
+
+path_list_score = "/home2/tanminh/FIQA/note_score_shuffle_sub.txt"
+
+file = open(path_list_score, "r")
+data = file.readlines()
 file.close()
+list_images = []
+list_scores = []
+for line in tqdm(data[:5000]):
+    name_images, score_pos, score_neg = line.split(" ")
+    score_pos = float(score_pos)
+    score_neg = float(score_neg)
+    score_pos = score_pos / (score_neg + 1 + 1e-9)
+    image = cv2.imread(name_images)
+    list_images.append(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+    list_scores.append(score_pos)
 
-break_line = 10
-list_image = [] 
-list_temp = []
+# arg = np.argsort(list_scores)
+# list_images = [list_images[i] for i in arg]
+# list_scores = [list_scores[i] for i in arg]
 
-for line in data: 
-    path, ccs, nncs =  line.split(" ")
-
-    if len(list_temp) > 0 and len(list_temp) % break_line == 0: 
-        list_image.append(np.concatenate(list_temp, axis=1))
-        list_temp = [] 
-    score = float(ccs) / (float(nncs) + 1 + 1e-9)
-    # if  score > 0.5 and score < 0.6: 
-    if  score > 0.6: 
-        list_temp.append(cv2.resize((cv2.imread(path)), (64, 64))) 
-
-if len(list_image) == 0: 
-    exit() 
-if len(list_image) == 1: 
-    cv2.imwrite("6e-1.jpg", list_image[0])
-    exit()
-cv2.imwrite("6e-1.jpg", np.concatenate(list_image, axis=0))
-
-
+for start in range(0, len(list_images), 500):
+    plot_images_with_scores(list_images[start:min(
+        start + 500, len(list_images))], list_scores[start:min(start + 500, len(list_images))], name_save= f"sub_mean_ori_{start}.jpg")
