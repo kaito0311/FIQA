@@ -1,5 +1,0 @@
-[ ] Chuẩn bị dataset : norm lại cosine 
-[ ] Code ranking 
-
-mean_angular, std_angular 
-mean_feature, std_feature

@@ -140,3 +140,15 @@ class CR_FIQA_LOSS_COSINE:
         max_negative = max_negative.clamp(-1, 1)
 
         return cos_theta, None, distmat[index, None], max_negative[index, None]
+
+
+def smooth_l1_loss(x, y, scale_loss=None, beta=0.5):
+    sub = torch.abs(x - y)
+
+    score = torch.where(sub < beta, 0.5 * sub **
+                        2 / beta, sub - 0.5 * beta)
+
+    if scale_loss is not None:
+        score = score * scale_loss
+
+    return torch.mean(score)

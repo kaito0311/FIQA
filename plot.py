@@ -45,26 +45,27 @@ def plot_images_with_scores(images, scores, num_cols=10, name_save="yeah.jpg"):
 
     plt.savefig(name_save)
 
-path_list_score = "note_score_shuffle.txt"
+if __name__ == "__main__":
+    path_list_score = "note_score_shuffle.txt"
 
-file = open(path_list_score, "r")
-data = file.readlines()
-file.close()
-list_images = []
-list_scores = []
-for line in tqdm(data[:5000]):
-    name_images, score_pos, score_neg = line.split(" ")
-    score_pos = float(score_pos)
-    score_neg = float(score_neg)
-    score_pos = score_pos / (score_neg + 1 + 1e-9)
-    image = cv2.imread(name_images)
-    list_images.append(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-    list_scores.append(score_pos)
+    file = open(path_list_score, "r")
+    data = file.readlines()
+    file.close()
+    list_images = []
+    list_scores = []
+    for line in tqdm(data[:5000]):
+        name_images, score_pos, score_neg = line.split(" ")
+        score_pos = float(score_pos)
+        score_neg = float(score_neg)
+        score_pos = score_pos / (score_neg + 1 + 1e-9)
+        image = cv2.imread(name_images)
+        list_images.append(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        list_scores.append(score_pos)
 
-# arg = np.argsort(list_scores)
-# list_images = [list_images[i] for i in arg]
-# list_scores = [list_scores[i] for i in arg]
+    # arg = np.argsort(list_scores)
+    # list_images = [list_images[i] for i in arg]
+    # list_scores = [list_scores[i] for i in arg]
 
-for start in range(0, len(list_images), 500):
-    plot_images_with_scores(list_images[start:min(
-        start + 500, len(list_images))], list_scores[start:min(start + 500, len(list_images))], name_save= f"sub_mean_ori_{start}.jpg")
+    for start in range(0, len(list_images), 500):
+        plot_images_with_scores(list_images[start:min(
+            start + 500, len(list_images))], list_scores[start:min(start + 500, len(list_images))], name_save= f"sub_mean_ori_{start}.jpg")

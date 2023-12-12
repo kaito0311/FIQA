@@ -66,38 +66,38 @@ def clustering_data(X, threshold=0.7, return_infor_prob=True):
     else:
         return X[max_cluster_indices].reshape(-1, 1024), None, None
 
+if __name__ == "__main__":
+    feature_dir = '/home2/tanminh/FIQA/feature_dir'
+    diction = np.load("dict_name_features.npy", allow_pickle=True).item()
+    ls_mean_feature = []
+    ls_std_feature = []
 
-feature_dir = '/home2/tanminh/FIQA/feature_dir'
-diction = np.load("dict_name_features.npy", allow_pickle=True).item()
-ls_mean_feature = []
-ls_std_feature = []
+    ls_mean_cosine = [] 
+    ls_std_cosine = []
 
-ls_mean_cosine = [] 
-ls_std_cosine = []
+    diction_mean_cluster = dict()
+    diction_std_cluster = dict()
 
-diction_mean_cluster = dict()
-diction_std_cluster = dict()
+    for name_id in tqdm(diction.keys()):
+        data = np.load(os.path.join(feature_dir, name_id+".npy")).reshape(-1, 1024)
 
-for name_id in tqdm(diction.keys()):
-    data = np.load(os.path.join(feature_dir, name_id+".npy")).reshape(-1, 1024)
+        if len(data) > 2:
+            data, mean_consine_distance, std_cosine_distance = clustering_data(data, threshold=2)
+            diction_mean_cluster[name_id] = mean_consine_distance 
+            diction_std_cluster[name_id] = std_cosine_distance
+        
 
-    if len(data) > 2:
-        data, mean_consine_distance, std_cosine_distance = clustering_data(data, threshold=2)
-        diction_mean_cluster[name_id] = mean_consine_distance 
-        diction_std_cluster[name_id] = std_cosine_distance
-    
-
-#     ls_mean_feature.append(np.mean(data, axis=0).reshape(1, -1))
-#     ls_std_feature.append(np.std(data / np.linalg.norm(data,
-#                   axis=1).reshape(-1, 1), axis=0).reshape(1, -1))
+    #     ls_mean_feature.append(np.mean(data, axis=0).reshape(1, -1))
+    #     ls_std_feature.append(np.std(data / np.linalg.norm(data,
+    #                   axis=1).reshape(-1, 1), axis=0).reshape(1, -1))
 
 
-# ls_mean_feature = np.concatenate(ls_mean_feature, axis=0)
-# ls_std_feature = np.concatenate(ls_std_feature, axis=0)
-# print(ls_mean_feature.shape)
+    # ls_mean_feature = np.concatenate(ls_mean_feature, axis=0)
+    # ls_std_feature = np.concatenate(ls_std_feature, axis=0)
+    # print(ls_mean_feature.shape)
 
-np.save("data/mean_cosine_distance_cluster.npy", diction_mean_cluster)
-np.save("./data/std_cosine_distance_cluster.npy", diction_std_cluster)
+    np.save("data/mean_cosine_distance_cluster.npy", diction_mean_cluster)
+    np.save("./data/std_cosine_distance_cluster.npy", diction_std_cluster)
 
-# np.save("data/mean_cluster.npy", ls_mean_feature)
-# np.save("data/std_cluster_norm.npy", ls_std_feature)
+    # np.save("data/mean_cluster.npy", ls_mean_feature)
+    # np.save("data/std_cluster_norm.npy", ls_std_feature)

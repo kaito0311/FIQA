@@ -64,49 +64,49 @@ class MXFaceDataset(Dataset):
     def __len__(self):
         return len(self.imgidx)
 
+if __name__ == "__main__":
+    dataset = FaceDataset(
+        "feature_dir", "/home2/tanminh/FIQA/dict_name_features.npy")
+    batch_size = 4
 
-dataset = FaceDataset(
-    "feature_dir", "/home2/tanminh/FIQA/dict_name_features.npy")
-batch_size = 4
+    dataloader = DataLoader(dataset, batch_size, shuffle=False,
+                            num_workers=4, drop_last=False)
 
-dataloader = DataLoader(dataset, batch_size, shuffle=False,
-                        num_workers=4, drop_last=False)
+    backbone = iresnet160(False)
+    head = Head_Cls(512, 1)
 
-backbone = iresnet160(False)
-head = Head_Cls(512, 1)
+    sum_array = torch.zeros(size=(85742, 512))
+    sum_norm_array = torch.zeros(size=(85742, 512))
+    count_array = torch.zeros(size=(85742,))
 
-sum_array = torch.zeros(size=(85742, 512))
-sum_norm_array = torch.zeros(size=(85742, 512))
-count_array = torch.zeros(size=(85742,))
+    backbone.load_state_dict(torch.load(
+        "/home1/data/tanminh/Face_Recognize_Quaility_Assessment/r160_imintv4_statedict.pth"))
+    backbone.eval()
 
-backbone.load_state_dict(torch.load(
-    "/home1/data/tanminh/Face_Recognize_Quaility_Assessment/r160_imintv4_statedict.pth"))
-backbone.eval()
+    backbone.to('cuda')
+    # sum_array = sum_array.cuda()
+    # count_array = count_array.cuda()
+    count = 0
+    for _, (img, label, index) in enumerate(dataloader):
+        count += batch_size
+        features = backbone(img.to("cuda"))
+        print("infered.")
+        label = label.detach().cpu()
+        features = features.detach().cpu()
+        norm_features = features / (np.linalg.norm(features, axis=0))
+        for unit_label, unit_feature, unit_norm_feature in zip(label, features, norm_features):
+            sum_array[unit_label] += unit_feature
+            sum_norm_array[unit_label] += unit_norm_feature
+            # print(sum_array.shape)
+            count_array[unit_label] += 1
 
-backbone.to('cuda')
-# sum_array = sum_array.cuda()
-# count_array = count_array.cuda()
-count = 0
-for _, (img, label, index) in enumerate(dataloader):
-    count += batch_size
-    features = backbone(img.to("cuda"))
-    print("infered.")
-    label = label.detach().cpu()
-    features = features.detach().cpu()
-    norm_features = features / (np.linalg.norm(features, axis=0))
-    for unit_label, unit_feature, unit_norm_feature in zip(label, features, norm_features):
-        sum_array[unit_label] += unit_feature
-        sum_norm_array[unit_label] += unit_norm_feature
-        # print(sum_array.shape)
-        count_array[unit_label] += 1
+        features = features.numpy()
+        np.save("features_sample", features)
+        label = label.numpy()
+        np.save("label", label)
+        exit()
 
-    features = features.numpy()
-    np.save("features_sample", features)
-    label = label.numpy()
-    np.save("label", label)
-    exit()
-
-    del features
+        del features
 #     if count % 1000 == 0:
 #         print(count)
 #         np.save("mean.npy", (sum_array / count_array.reshape(-1, 1)).detach().cpu().numpy())

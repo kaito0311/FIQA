@@ -6,82 +6,26 @@ import time
 
 import torch
 import numpy as np
-import torch.distributed as dist
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, Dataset
-from torch.nn.utils import clip_grad_norm_
+import torch.distributed as dist
 from torch.nn import CrossEntropyLoss
+from torch.nn.utils import clip_grad_norm_
+from torch.utils.data import DataLoader, Dataset
 
 import losses
+from models.head import Head_Cls
 from config import config as cfg
-from dataset import MXFaceDataset, FaceDataset
-from utils.utils_callbacks import CallBackVerification, CallBackLogging, CallBackModelCheckpoint
-from utils.utils_logging import AverageMeter, init_logging
-
 from models.imintv5 import ONNX_IMINT
-from backbones.iresnet import iresnet100, iresnet50
+from utils.utils import cosine_lr, get_lr
+from dataset import MXFaceDataset, FaceDataset
 from backbones.iresnet_imintv5 import iresnet160
+from backbones.iresnet import iresnet100, iresnet50
+from utils.utils_logging import AverageMeter, init_logging
+from utils.utils_callbacks import CallBackVerification, CallBackLogging, CallBackModelCheckpoint
+
 
 torch.backends.cudnn.benchmark = True
 torch.set_num_threads(4)
-
-
-def get_lr(optimizer):
-    for param_group in optimizer.param_groups:
-        return param_group['lr']
-
-
-def assign_learning_rate(param_group, new_lr):
-    param_group["lr"] = new_lr
-
-
-def _warmup_lr(base_lr, warmup_length, step):
-    return base_lr * (step + 1) / warmup_length
-
-
-def cosine_lr(optimizer, base_lrs, warmup_length, steps):
-    if not isinstance(base_lrs, list):
-        base_lrs = [base_lrs for _ in optimizer.param_groups]
-    assert len(base_lrs) == len(optimizer.param_groups)
-
-    def _lr_adjuster(step):
-        for param_group, base_lr in zip(optimizer.param_groups, base_lrs):
-            if step < warmup_length:
-                lr = _warmup_lr(base_lr, warmup_length, step)
-            else:
-                e = step - warmup_length
-                es = steps - warmup_length
-                lr = 0.5 * (1 + np.cos(np.pi * e / es)) * base_lr
-            assign_learning_rate(param_group, lr)
-        return lr
-    return _lr_adjuster
-
-
-class Head_Cls(torch.nn.Module):
-    def __init__(self, in_features=512, out_features=1) -> None:
-        super().__init__()
-        self.middle = torch.nn.Linear(in_features, 128)
-        self.leaky = torch.nn.LeakyReLU(negative_slope=0.1)
-        self.dropout = torch.nn.Dropout(p=0.4)
-        self.qs = torch.nn.Linear(128, out_features)
-
-        for m in self.modules():
-            if isinstance(m, torch.nn.Conv2d):
-                torch.nn.init.normal_(m.weight, 0, 0.1)
-            elif isinstance(m, (torch.nn.BatchNorm2d, torch.nn.GroupNorm)):
-                torch.nn.init.constant_(m.weight, 1)
-                torch.nn.init.constant_(m.bias, 0)
-
-    def forward(self, x):
-        x = self.middle(x)
-        x = self.leaky(x)
-        x = self.dropout(x)
-        return self.qs(x)
-
-
-def get_lr(optimizer):
-    for param_group in optimizer.param_groups:
-        return param_group['lr']
 
 
 def main():
@@ -94,20 +38,20 @@ def main():
 
     init_logging(log_root, 0, cfg.output)
 
-    trainset = FaceDataset(
-        "feature_dir", "/home2/tanminh/FIQA/dict_name_features.npy",
-        path_dict_mean_distance="/home2/tanminh/FIQA/data/diction_mean_cluster_thresh_5e-1.npy")
+    trainset = FaceDataset(cfg.feature_dir, path_dict=cfg.dict_name_features,
+                           path_dict_mean_distance=cfg.path_dict_mean_distance, 
+                           path_list_name= cfg.path_list_name, path_list_id= cfg.path_list_id)
     dataloader = DataLoader(trainset, cfg.batch_size, shuffle=False,
                             num_workers=cfg.num_workers, drop_last=True)
 
     # backbone = iresnet160(False)
     # backbone.load_state_dict(torch.load("/home1/data/tanminh/Face_Recognize_Quaility_Assessment/r160_imintv4_statedict.pth"))
 
-    backbone = ONNX_IMINT(
-        "/home2/tanminh/FIQA/pretrained/stacking_avg_r160+ada-unnorm-stacking-ada-1.6.onnx")
-    head = Head_Cls(1024, 1)
+    backbone = ONNX_IMINT(cfg.path_backbone_imint)
 
-    head.cuda()
+    head = Head_Cls(cfg.num_feature_out, 1)
+
+    head.to(cfg.device)
 
     if cfg.resume:
         print("[INFO] Resume. Loading last chk...")
@@ -120,35 +64,22 @@ def main():
     #     path_std="/home2/tanminh/FIQA/data/std_cluster.npy",
     #     device="cuda",
     # )
+
+
+    # Loss functions
+    criterion = CrossEntropyLoss()
+    criterion_qs = torch.nn.L1Loss()
+    rank_loss_func = torch.nn.BCELoss()
+
     FR_loss = losses.CR_FIQA_LOSS_COSINE(
-        path_mean_feature="/home2/tanminh/FIQA/data/mean_cluster.npy",
-        path_list_mean_cosine="/home2/tanminh/FIQA/data/list_mean_similar.npy",
-        path_list_std_cosine="/home2/tanminh/FIQA/data/list_std_similar.npy",
-        device="cuda",
+        path_mean_feature=cfg.path_mean_feature,
+        path_list_mean_cosine=cfg.path_list_mean_cosine,
+        path_list_std_cosine=cfg.path_list_std_cosine,
+        device=cfg.device,
         s=64.0,
         m=0.5,
     )
 
-    # opt_head = torch.optim.SGD(
-    # params=[{'params': head.parameters()}],
-    # lr=cfg.lr,
-    # momentum=0.9, weight_decay=cfg.weight_decay)
-
-    criterion = CrossEntropyLoss()
-
-    def smooth_l1_loss(x, y, scale_loss=None, beta=0.5):
-        sub = torch.abs(x - y)
-
-        score = torch.where(sub < beta, 0.5 * sub **
-                            2 / beta, sub - 0.5 * beta)
-
-        if scale_loss is not None:
-            score = score * scale_loss
-
-        return torch.mean(score)
-
-    criterion_qs = torch.nn.L1Loss()
-    rank_loss_func = torch.nn.BCELoss()
 
     start_epoch = 0
     total_step = int(len(trainset) / cfg.batch_size * cfg.num_epoch)
@@ -163,7 +94,7 @@ def main():
     callback_logging = CallBackLogging(
         50, rank, total_step, cfg.batch_size, world_size, writer=None)
     callback_checkpoint = CallBackModelCheckpoint(rank, cfg.output)
-    alpha = 10.0  # 10.0
+
     loss = AverageMeter()
     global_step = cfg.global_step
 
@@ -177,9 +108,9 @@ def main():
             list_id = list(list_id)
             list_name_image = list(list_name_image)
 
-            embedding = embedding.to("cuda")
-            label = label.cuda()
-            mean_distance = torch.unsqueeze(mean_distance, 1).cuda()
+            embedding = embedding.to(cfg.device)
+            label = label.to(cfg.device)
+            mean_distance = torch.unsqueeze(mean_distance, 1).to(cfg.device)
             # print("index: ", index)
             features = embedding
             qs = head(features)

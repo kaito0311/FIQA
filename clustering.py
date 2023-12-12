@@ -68,13 +68,15 @@ def clustering_data(X, threshold=0.5):
     print(len(max_cluster_indices))
     return max_cluster_indices
 
-# 2_2_0079041-2_1628598
-X = np.load(os.path.join("feature_dir", "0_3_0100996.npy"))
-X = X / np.linalg.norm(X, axis=1).reshape(-1, 1)
-indexes = clustering_data(X)
 
-X_clus = X[indexes]
-mean = np.mean(X_clus, axis=0)
+if __name__ == "__main__":
+    # 2_2_0079041-2_1628598
+    X = np.load(os.path.join("feature_dir", "0_3_0100996.npy"))
+    X = X / np.linalg.norm(X, axis=1).reshape(-1, 1)
+    indexes = clustering_data(X)
 
-print(np.sqrt(np.sum((mean-X[6])**2)))
-print(np.dot(mean, X[6].T))
+    X_clus = X[indexes]
+    mean = np.mean(X_clus, axis=0)
+
+    print(np.sqrt(np.sum((mean-X[6])**2)))
+    print(np.dot(mean, X[6].T))
