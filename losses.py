@@ -126,18 +126,17 @@ class CR_FIQA_LOSS_COSINE:
         kernel_norm = l2_norm(self.kernel, axis=0)
         cos_theta = torch.mm(embbedings, kernel_norm)
         cos_theta = cos_theta.clamp(-1, 1)  # for numerical stability
-
+        
         cos_theta_norm = (
-            cos_theta - self.mean_cosine_dis[label].reshape(-1, 1)) / self.std_cosine_dis[label].reshape(-1, 1)
+            cos_theta - self.mean_cosine_dis.reshape(1, -1)) / self.std_cosine_dis.reshape(1, -1)
         cos_theta = cos_theta_norm
 
         index = torch.where(label != -1)[0]
         distmat = cos_theta[index, label.view(-1)].detach().clone()
 
         max_negative_cloned = cos_theta.detach().clone()
-        max_negative_cloned[index, label.view(-1)] = -1e9
+        max_negative_cloned[index, label.view(-1)] = -1000
         max_negative, _ = max_negative_cloned.max(dim=1)
-        max_negative = max_negative.clamp(-1, 1)
 
         return cos_theta, None, distmat[index, None], max_negative[index, None]
 

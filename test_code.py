@@ -15,15 +15,15 @@ from backbones.iresnet_imintv5 import iresnet160
 
 import numpy as np
 
-list_name_id = np.load("list_id.npy")
+list_name_id = np.load("/home2/tanminh/FIQA/data/100k_id/list_id.npy")
 
-diction_mean_cosine = np.load("data/mean_cosine_similar_cluster_diction.npy", allow_pickle= True).item() 
-diction_std_cosine = np.load("data/std_cosine_similar_cluster_diction.npy", allow_pickle= True).item() 
+diction_mean_cosine = np.load("data/100k_id/mean_cosine_similar_cluster_diction.npy", allow_pickle= True).item() 
+diction_std_cosine = np.load("data/100k_id/std_cosine_similar_cluster_diction.npy", allow_pickle= True).item() 
 
 list_mean_cosine = [] 
 list_std_cosine = [] 
 
-for name_id in tqdm(list_name_id):
+for name_id in tqdm(set(list_name_id)):
     list_mean_cosine.append(diction_mean_cosine[name_id])
     list_std_cosine.append(diction_std_cosine[name_id])
     
