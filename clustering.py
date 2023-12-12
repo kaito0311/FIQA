@@ -73,8 +73,8 @@ X = np.load(os.path.join("feature_dir", "0_3_0100996.npy"))
 X = X / np.linalg.norm(X, axis=1).reshape(-1, 1)
 indexes = clustering_data(X)
 
-# X_clus = X[indexes]
-# mean = np.mean(X_clus, axis=0)
+X_clus = X[indexes]
+mean = np.mean(X_clus, axis=0)
 
-# print(np.sqrt(np.sum((mean-X[6])**2)))
-# print(np.dot(mean, X[6].T))
+print(np.sqrt(np.sum((mean-X[6])**2)))
+print(np.dot(mean, X[6].T))

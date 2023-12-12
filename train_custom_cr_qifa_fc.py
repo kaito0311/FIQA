@@ -115,10 +115,18 @@ def main():
 
     head.train()
 
-    FR_loss = losses.CR_FIQA_LOSS_ONTOP(
-        path_mean="/home2/tanminh/FIQA/data/mean_cluster.npy",
-        path_std="/home2/tanminh/FIQA/data/std_cluster.npy",
+    # FR_loss = losses.CR_FIQA_LOSS_ONTOP(
+    #     path_mean="/home2/tanminh/FIQA/data/mean_cluster.npy",
+    #     path_std="/home2/tanminh/FIQA/data/std_cluster.npy",
+    #     device="cuda",
+    # )
+    FR_loss = losses.CR_FIQA_LOSS_COSINE(
+        path_mean_feature="/home2/tanminh/FIQA/data/mean_cluster.npy",
+        path_list_mean_cosine="/home2/tanminh/FIQA/data/list_mean_similar.npy",
+        path_list_std_cosine="/home2/tanminh/FIQA/data/list_std_similar.npy",
         device="cuda",
+        s=64.0,
+        m=0.5,
     )
 
     # opt_head = torch.optim.SGD(
@@ -140,7 +148,7 @@ def main():
         return torch.mean(score)
 
     criterion_qs = torch.nn.L1Loss()
-    rank_loss_func = torch.nn.BCELoss() 
+    rank_loss_func = torch.nn.BCELoss()
 
     start_epoch = 0
     total_step = int(len(trainset) / cfg.batch_size * cfg.num_epoch)
@@ -204,7 +212,7 @@ def main():
             # root_dir = "/home1/webface_260M/unzip_folder/WebFace260M"
             # save_dir = "test_images_shuffle"
             # file = open("note_score_shuffle.txt", "a")
-            # os.makedirs(save_dir, exist_ok= True)
+            # os.makedirs(save_dir, exist_ok=True)
             # count_idx = 0
             # for id, name in zip(list_id, list_name_image):
             #     path_image = os.path.join(root_dir, id, name)
@@ -212,7 +220,9 @@ def main():
             #     # os.system(cmd)
 
             #     file.write(
-            #         str(path_image) + " " + str(copy_ccs[count_idx][0]) + " " + str(copy_nnccs[count_idx][0]) + "\n"
+            #         str(path_image) + " " +
+            #         str(copy_ccs[count_idx][0]) + " " +
+            #         str(copy_nnccs[count_idx][0]) + "\n"
             #     )
             #     count_idx += 1
 
@@ -221,21 +231,18 @@ def main():
             def prev_sub(q):
                 prev = torch.empty_like(q.reshape(1, -1))
                 prev[0][0:-1] = q.reshape(1, -1).clone()[0][1:]
-                prev[0][-1] = q.reshape(1, -1)[0][0] 
-                return prev 
-        
+                prev[0][-1] = q.reshape(1, -1)[0][0]
+                return prev
 
-            ccs_sub1 = prev_sub(ccs) # shape (1, bs)
-            y_truth = torch.where((ccs_sub1[0] - ccs.reshape(1, 128)[0]) < 0, 0.0, 1.0)
+            ccs_sub1 = prev_sub(ccs)  # shape (1, bs)
+            y_truth = torch.where(
+                (ccs_sub1[0] - ccs.reshape(1, 128)[0]) < 0, 0.0, 1.0)
 
-            qs_sub = prev_sub(qs) 
+            qs_sub = prev_sub(qs)
             y_pred = qs_sub[0] - qs.reshape(1, 128)[0]
-            y_pred = torch.exp(y_pred) 
+            y_pred = torch.exp(y_pred)
             y_pred = y_pred / (y_pred + 1)
             bce_loss = rank_loss_func(y_pred, y_truth)
-
-            
-
 
             # ref_score = ((ccs) / (nnccs + 1 + 1e-9))
             ref_score = (ccs)
@@ -253,14 +260,13 @@ def main():
 
             # exit()
 
-            loss_v = 10 * loss_qs + 4 * bce_loss
+            loss_v = 4 * bce_loss
             loss_v.backward()
             if global_step % 10 == 0:
                 print("ref_score: ", ref_score[:10])
                 print("qs score: ", qs[:10])
                 # print("loss KL: ", loss_kl)
                 print("bce loss: ", bce_loss)
-
 
             clip_grad_norm_(head.parameters(), max_norm=5, norm_type=2)
 

@@ -136,8 +136,8 @@ class FaceDataset(Dataset):
                 return
 
         for key in tqdm(self.dict.keys()):
-            self.list_name = self.list_name + self.dict[key]
-            self.list_id = self.list_id + [key] * len(self.dict[key])
+            self.list_name = self.list_name.extend(self.dict[key])
+            self.list_id = self.list_id.extend([key] * len(self.dict[key]))
         print(len(self.list_name))
         print(len(self.list_id))
         if self.save_listed:

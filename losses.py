@@ -69,15 +69,15 @@ class CR_FIQA_LOSS_ONTOP():
         self.mean = np.load(path_mean).astype(np.float32)
         self.kernel = torch.from_numpy(self.mean.T).to(self.device)
         self.std = np.load(path_std).astype(np.float32)
-        self.std = torch.from_numpy(self.std.T).to(self.device) 
+        self.std = torch.from_numpy(self.std.T).to(self.device)
 
         print("[INFO] size kernel: ", self.kernel.size())
         # nn.init.normal_(self.kernel, std=0.01)
 
     def __call__(self, embbedings, label):
-        embbedings = (embbedings - self.kernel.T[label]) / self.std.T[label] 
         embbedings = l2_norm(embbedings, axis=1)
         kernel_norm = l2_norm(self.kernel, axis=0)
+        embbedings = (embbedings - self.kernel.T[label]) / self.std.T[label]
         cos_theta = torch.mm(embbedings, kernel_norm)
         cos_theta = cos_theta.clamp(-1, 1)  # for numerical stability
         index = torch.where(label != -1)[0]
@@ -99,3 +99,44 @@ class CR_FIQA_LOSS_ONTOP():
         # cos_theta[index] += m_hot
         # cos_theta.cos_().mul_(self.s)
         return cos_theta, index_neq, distmat[index, None], max_negative[index, None]
+
+
+class CR_FIQA_LOSS_COSINE:
+    def __init__(self, path_mean_feature, path_list_mean_cosine, path_list_std_cosine, device="cuda", s=64.0, m=0.50):
+        self.device = device
+        self.s = s
+        self.m = m
+
+        self.mean = np.load(path_mean_feature).astype(np.float32)
+        self.kernel = torch.from_numpy(self.mean.T).to(self.device)
+
+        self.mean_cosine_dis = np.load(
+            path_list_mean_cosine).astype(np.float32)
+        self.mean_cosine_dis = torch.from_numpy(
+            self.mean_cosine_dis).to(self.device)
+
+        self.std_cosine_dis = np.load(path_list_std_cosine).astype(np.float32)
+        self.std_cosine_dis = torch.from_numpy(
+            self.std_cosine_dis.T).to(self.device)
+
+        print("[INFO] size kernel: ", self.kernel.size())
+
+    def __call__(self, embbedings, label):
+        embbedings = l2_norm(embbedings, axis=1)
+        kernel_norm = l2_norm(self.kernel, axis=0)
+        cos_theta = torch.mm(embbedings, kernel_norm)
+        cos_theta = cos_theta.clamp(-1, 1)  # for numerical stability
+
+        cos_theta_norm = (
+            cos_theta - self.mean_cosine_dis[label].reshape(-1, 1)) / self.std_cosine_dis[label].reshape(-1, 1)
+        cos_theta = cos_theta_norm
+
+        index = torch.where(label != -1)[0]
+        distmat = cos_theta[index, label.view(-1)].detach().clone()
+
+        max_negative_cloned = cos_theta.detach().clone()
+        max_negative_cloned[index, label.view(-1)] = -1e9
+        max_negative, _ = max_negative_cloned.max(dim=1)
+        max_negative = max_negative.clamp(-1, 1)
+
+        return cos_theta, None, distmat[index, None], max_negative[index, None]

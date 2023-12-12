@@ -45,7 +45,7 @@ def plot_images_with_scores(images, scores, num_cols=10, name_save="yeah.jpg"):
 
     plt.savefig(name_save)
 
-path_list_score = "/home2/tanminh/FIQA/note_score_shuffle_sub.txt"
+path_list_score = "note_score_shuffle.txt"
 
 file = open(path_list_score, "r")
 data = file.readlines()

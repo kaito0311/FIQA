@@ -13,7 +13,41 @@ from backbones.iresnet_imintv5 import iresnet160
 
 
 
+import numpy as np
 
+list_name_id = np.load("list_id.npy")
+
+diction_mean_cosine = np.load("data/mean_cosine_similar_cluster_diction.npy", allow_pickle= True).item() 
+diction_std_cosine = np.load("data/std_cosine_similar_cluster_diction.npy", allow_pickle= True).item() 
+
+list_mean_cosine = [] 
+list_std_cosine = [] 
+
+for name_id in tqdm(list_name_id):
+    list_mean_cosine.append(diction_mean_cosine[name_id])
+    list_std_cosine.append(diction_std_cosine[name_id])
+    
+np.save("data/list_mean_similar.npy", list_mean_cosine)
+np.save("data/list_std_similar.npy", list_std_cosine)
+
+
+exit()
+
+# Giả sử A là ma trận đối xứng NxN
+A = np.array([[1, 2, 3], [2, 4, 5], [3, 5, 6]])
+
+print(A)
+
+# Lấy các phần tử ở tam giác trên, không bao gồm đường chéo
+upper_triangular = np.triu_(A, k=1)
+
+print(upper_triangular)
+
+
+
+
+
+exit() 
 
 diction = np.load("data/diction_mean_cluster_thresh_5e-1.npy", allow_pickle= True).item() 
 
