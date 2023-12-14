@@ -117,7 +117,7 @@ def main():
             thetas, index_nq, ccs, nnccs = FR_loss(features, label)
             # print(ccs.shape)
             # print(mean_distance.shape)
-            ccs = ccs
+            ccs = ccs - 0.1 * nnccs
 
             # if len(index_nq) > 0:
 
@@ -180,7 +180,7 @@ def main():
             qs = (qs)
             # loss_qs = smooth_l1_loss(ref_score, qs ,scale_loss(ref_score), beta=0.5)
             # loss_qs = smooth_l1_loss(ref_score, qs , None, beta=0.5)
-            loss_qs = criterion_qs(qs, ref_score)
+            loss_qs = criterion_qs(torch.sigmoid(qs), torch.sigmoid(ref_score))
             # print(qs.reshape(1, -1).size())
             # softmax_qs = F.log_softmax(qs.reshape(1, -1), dim=1)
             # softmax_ref_score = F.softmax(ref_score.reshape(1, -1), dim=1)
@@ -191,12 +191,12 @@ def main():
 
             # exit()
 
-            loss_v = 4 * bce_loss
+            loss_v = 4 * bce_loss + 10 * loss_qs
             loss_v.backward()
             if global_step % 10 == 0:
-                print("ref_score: ", ref_score[:10])
-                print("qs score: ", qs[:10])
+                print("ref_score: ", torch.sigmoid(ref_score)[:10])
                 # print("loss KL: ", loss_kl)
+                print("qs score: ", torch.sigmoid(qs)[:10])
                 print("bce loss: ", bce_loss)
 
             clip_grad_norm_(head.parameters(), max_norm=5, norm_type=2)

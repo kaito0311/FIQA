@@ -6,9 +6,9 @@ class config:
     embedding_size = 1024  # embedding size of evaluation
     momentum = 0.9
     weight_decay = 5e-4
-    batch_size = 128  # batch size per GPU
+    batch_size = 32  # batch size per GPU
     lr = 1e-3
-    output = "output/learning_to_rank_norm_cosine_truth"  # train evaluation output folder
+    output = "output/l2r_vit_retrain"  # train evaluation output folder
     s = 64.0
     m = 0.50
     beta = 0.5
@@ -16,6 +16,7 @@ class config:
     device = "cuda"
 
     resume = False
+    resume_vit = None
     resume_head = "/home2/tanminh/FIQA/output/pure_L1_add_noise_ngaongo_them_kldiv/271000header.pth"
     resume_backbone = "/home1/data/tanminh/FIQA/output/R50_CRFIQA/18000backbone.pth"
     global_step = 0  # step to resume

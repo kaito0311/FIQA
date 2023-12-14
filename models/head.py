@@ -20,3 +20,4 @@ class Head_Cls(torch.nn.Module):
         x = self.leaky(x)
         x = self.dropout(x)
         return self.qs(x)
+

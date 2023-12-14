@@ -17,12 +17,11 @@ class ONNX_IMINT:
     def __call__(self, x, *args: Any, **kwds: Any) -> Any:
         IN_IMAGE_H = self.session.get_inputs()[0].shape[2]
         IN_IMAGE_W = self.session.get_inputs()[0].shape[3]
-
         if isinstance(x, torch.Tensor):
-            x = x.detach().cpu().numpy() 
-        assert IN_IMAGE_H == x.shape[2] 
+            x_numpy = x.clone().detach().cpu().numpy() 
+        assert IN_IMAGE_H == x_numpy.shape[2] 
 
-        outputs = self.session.run(None, {self.input_name: x})
+        outputs = self.session.run(None, {self.input_name: x_numpy})
         return outputs[0]
 
 

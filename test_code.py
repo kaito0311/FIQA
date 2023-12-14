@@ -15,6 +15,30 @@ from backbones.iresnet_imintv5 import iresnet160
 
 import numpy as np
 
+
+
+from degrade_image.degrade import auto_degrade
+
+
+image = cv2.imread("not_push_dir/test_images/0_3_0100996-0_2075945.jpg")
+image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+degrade_img = auto_degrade(image)
+
+cv2.imwrite("ehe2.jpg", cv2.cvtColor(degrade_img, cv2.COLOR_RGB2BGR))
+
+
+
+
+
+
+
+
+
+
+
+
+exit()
+
 list_name_id = np.load("/home2/tanminh/FIQA/data/100k_id/list_id.npy")
 
 diction_mean_cosine = np.load("data/100k_id/mean_cosine_similar_cluster_diction.npy", allow_pickle= True).item() 
