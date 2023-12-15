@@ -69,7 +69,7 @@ def train():
     init_logging(log_root, 0, cfg.output)
 
     trainset = FaceDatasetImage(
-        root_dir="/home1/webface_260M/unzip_folder/WebFace260M",
+        root_dir="data/images/WebFace260M",
         path_diction_name=cfg.dict_name_features,
         path_list_name=cfg.path_list_name,
         path_list_id=cfg.path_list_id,

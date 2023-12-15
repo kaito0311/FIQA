@@ -193,11 +193,11 @@ class FaceDatasetImage(Dataset):
         self.is_save_listed = is_save_listed
         self.prob_augment = prob_augment
 
-        self.transforms_resize_224 =  transforms.Compose([
+        self.transforms_resize_224 = transforms.Compose([
             transforms.Resize((224, 224)),
 
         ])
-        self.transforms_resize_112 =  transforms.Compose([
+        self.transforms_resize_112 = transforms.Compose([
             transforms.Resize((112, 112)),
         ])
 
@@ -206,7 +206,6 @@ class FaceDatasetImage(Dataset):
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.5], std=[0.5])
         ])
-
 
         self.prepare()
 
@@ -220,9 +219,8 @@ class FaceDatasetImage(Dataset):
                 return
 
         for key in tqdm(self.diction_name.keys()):
-            self.list_name = self.list_name.extend(self.diction_name[key])
-            self.list_id = self.list_id.extend[key] * \
-                len(self.diction_name[key])
+            self.list_name.extend(self.diction_name[key])
+            self.list_id.extend([key] * len(self.diction_name[key]))
 
         print("[INFO] Total images: ", len(self.list_name))
         print("[INFO] Total ids: ", len(self.list_id))
@@ -245,10 +243,12 @@ class FaceDatasetImage(Dataset):
         if np.random.rand() < self.prob_augment:
             image_degrade = auto_degrade(image, target_size=112)
         else:
-            image_degrade = image 
+            image_degrade = image
 
-        image_tensor_224 = self.transforms(self.transforms_resize_224(Image.fromarray(image_degrade)))
-        image_tensor_112 = self.transforms(self.transforms_resize_112(Image.fromarray(image_degrade)))
+        image_tensor_224 = self.transforms(
+            self.transforms_resize_224(Image.fromarray(image_degrade)))
+        image_tensor_112 = self.transforms(
+            self.transforms_resize_112(Image.fromarray(image_degrade)))
 
         return name_id, name_image, image_degrade, image_tensor_112, image_tensor_224, label_tensor
 

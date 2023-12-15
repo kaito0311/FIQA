@@ -67,8 +67,9 @@ def clustering_data(X, threshold=0.7, return_infor_prob=True):
         return X[max_cluster_indices].reshape(-1, 1024), None, None
 
 if __name__ == "__main__":
-    feature_dir = '/home2/tanminh/FIQA/feature_dir'
-    diction = np.load("dict_name_features.npy", allow_pickle=True).item()
+    feature_dir = 'feature_dir'
+    feature_flip_dir = "feature_flip_dir"
+    diction = np.load("data/2k_id/dict_name_features.npy", allow_pickle=True).item()
     ls_mean_feature = []
     ls_std_feature = []
 
@@ -80,24 +81,33 @@ if __name__ == "__main__":
 
     for name_id in tqdm(diction.keys()):
         data = np.load(os.path.join(feature_dir, name_id+".npy")).reshape(-1, 1024)
-
-        if len(data) > 2:
-            data, mean_consine_distance, std_cosine_distance = clustering_data(data, threshold=2)
-            diction_mean_cluster[name_id] = mean_consine_distance 
-            diction_std_cluster[name_id] = std_cosine_distance
+        data_flip = np.load(os.path.join(feature_flip_dir, name_id+".npy")).reshape(-1, 1024)
         
+        data = np.concatenate([data, data_flip], axis=0)
+        if len(data) > 2:
+            data, mean_consine_similar, std_cosine_similar = clustering_data(data, threshold=5)
+            diction_mean_cluster[name_id] = mean_consine_similar 
+            diction_std_cluster[name_id] = std_cosine_similar
+            ls_mean_cosine.append(np.copy(mean_consine_similar))
+            ls_std_cosine.append(np.copy(std_cosine_similar))
 
-    #     ls_mean_feature.append(np.mean(data, axis=0).reshape(1, -1))
+
+        ls_mean_feature.append(np.mean(data, axis=0).reshape(1, -1))
     #     ls_std_feature.append(np.std(data / np.linalg.norm(data,
     #                   axis=1).reshape(-1, 1), axis=0).reshape(1, -1))
 
 
-    # ls_mean_feature = np.concatenate(ls_mean_feature, axis=0)
+    ls_mean_feature = np.concatenate(ls_mean_feature, axis=0)
     # ls_std_feature = np.concatenate(ls_std_feature, axis=0)
-    # print(ls_mean_feature.shape)
+    print(ls_mean_feature.shape)
 
-    np.save("data/mean_cosine_distance_cluster.npy", diction_mean_cluster)
-    np.save("./data/std_cosine_distance_cluster.npy", diction_std_cluster)
+    np.save("ls_mean_cosine_similar.npy", ls_mean_cosine) 
+    np.save("ls_std_cosine_similar.npy", ls_std_cosine) 
+    np.save("mean_feature.npy", ls_mean_feature)
+    
+
+    # np.save("./data/mean_cosine_distance_cluster.npy", diction_mean_cluster)
+    # np.save("./data/std_cosine_distance_cluster.npy", diction_std_cluster)
 
     # np.save("data/mean_cluster.npy", ls_mean_feature)
     # np.save("data/std_cluster_norm.npy", ls_std_feature)

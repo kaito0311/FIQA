@@ -19,8 +19,17 @@ import numpy as np
 
 from degrade_image.degrade import auto_degrade
 
+test = np.load("data/2k_id/both_flip/mean_cosine_similar.npy", allow_pickle= True)
+print(test)
 
+exit()
 
+ls_mean_cosine = np.load("mean_cosine.npy")
+print(ls_mean_cosine)
+
+mean_feature = np.load("mean_feature.npy")
+print(mean_feature.shape)
+exit()
 
 print(len(os.listdir("test_zip")))
 
