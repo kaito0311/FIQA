@@ -8,3 +8,6 @@ output/
 pretrained/
 venv/
 not_push_dir/
+*.zip
+test_*/
+note_score_shuffle.txt

@@ -20,6 +20,40 @@ import numpy as np
 from degrade_image.degrade import auto_degrade
 
 
+
+
+print(len(os.listdir("test_zip")))
+
+
+exit() 
+
+root_dir = "/home1/webface_260M/unzip_folder/WebFace260M"
+list_path_folder = np.load("data/100k_id/dict_name_features.npy", allow_pickle= True).item().keys() 
+list_path_folder = list(list_path_folder)[500:2000] 
+
+print(len(list_path_folder))
+
+target_dir = "test_zip/"
+
+os.makedirs(target_dir, exist_ok= True) 
+
+name = 500
+for path in tqdm(list_path_folder): 
+    path = os.path.join(root_dir, path)
+    cmd = f"zip -r {os.path.join(target_dir, str(name))} {path}"
+    print(path)
+    name += 1 
+    os.system(cmd)
+
+
+
+
+
+
+
+
+exit()
+
 image = cv2.imread("not_push_dir/test_images/0_3_0100996-0_2075945.jpg")
 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 degrade_img = auto_degrade(image)

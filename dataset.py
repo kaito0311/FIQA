@@ -243,13 +243,14 @@ class FaceDatasetImage(Dataset):
         image = Image.open(os.path.join(self.root_dir, name_id, name_image))
         image = np.array(image)
         if np.random.rand() < self.prob_augment:
-            image_degrade = auto_degrade(image)
+            image_degrade = auto_degrade(image, target_size=112)
         else:
             image_degrade = image 
+
         image_tensor_224 = self.transforms(self.transforms_resize_224(Image.fromarray(image_degrade)))
         image_tensor_112 = self.transforms(self.transforms_resize_112(Image.fromarray(image_degrade)))
 
-        return image_tensor_112, image_tensor_224, label_tensor
+        return name_id, name_image, image_degrade, image_tensor_112, image_tensor_224, label_tensor
 
     def __len__(self):
         return len(self.list_name)

@@ -61,6 +61,7 @@ def clustering_data(X, threshold=0.5):
     max_cluster_indices = [index for index, label in enumerate(
         labels) if label == max_cluster_index]
     
+    print(max_cluster_indices)
     print(dist_matrix.shape)
     dis_avg_matrix = ((dist_matrix[max_cluster_indices]).T)[max_cluster_indices]
     print(dis_avg_matrix.shape)
@@ -71,9 +72,9 @@ def clustering_data(X, threshold=0.5):
 
 if __name__ == "__main__":
     # 2_2_0079041-2_1628598
-    X = np.load(os.path.join("feature_dir", "0_3_0100996.npy"))
+    X = np.load(os.path.join("feature_dir", "4_3_0098173.npy"))
     X = X / np.linalg.norm(X, axis=1).reshape(-1, 1)
-    indexes = clustering_data(X)
+    indexes = clustering_data(X, 0.7)
 
     X_clus = X[indexes]
     mean = np.mean(X_clus, axis=0)

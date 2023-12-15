@@ -54,11 +54,12 @@ if __name__ == "__main__":
     list_images = []
     list_scores = []
     for line in tqdm(data[:5000]):
-        name_images, score_pos, score_neg = line.split(" ")
+        score_neg = 0
+        name_images, score_pos= line.split(" ")
         score_pos = float(score_pos)
         score_neg = float(score_neg)
         score_pos = score_pos / (score_neg + 1 + 1e-9)
-        image = cv2.imread(name_images)
+        image = cv2.imread(os.path.join("sample_training", name_images))
         list_images.append(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
         list_scores.append(score_pos)
 

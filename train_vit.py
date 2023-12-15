@@ -4,6 +4,7 @@ import os
 from threading import local
 import time
 
+import cv2 
 import torch
 import mlflow
 import numpy as np
@@ -120,7 +121,7 @@ def train():
     global_step = cfg.global_step
 
     for epoch in range(start_epoch, cfg.num_epoch):
-        for index, (images_numpy, images_tensor, labels) in enumerate(dataloader):
+        for index, (list_name_id, list_name_image, list_or_image, images_numpy, images_tensor, labels) in enumerate(dataloader):
             global_step += 1
             lr = scheduler_header(global_step)
 
@@ -132,6 +133,8 @@ def train():
             features_imint = imint_backbone(images_numpy)
             features_imint = torch.Tensor(features_imint.astype(np.float32)).to(cfg.device)
             _, _, ccs, nnccs = FR_loss(features_imint, labels)
+
+            ccs = ccs - 0.1 * nnccs 
 
             def prev_sub(q):
                 prev = torch.empty_like(q.reshape(1, -1))
@@ -153,6 +156,30 @@ def train():
 
             loss_v = 4 * bce_loss + 10 * loss_qs
             loss_v.backward()
+
+            # ''' Save '''
+            # root_dir = "./sample_training"
+
+            # copy_ccs = ccs.reshape(-1, 1).detach().cpu().numpy() 
+
+            # file = open("note_score_shuffle.txt", "a")
+
+            # os.makedirs(os.path.join(root_dir), exist_ok= True)
+
+            # count = 0
+            # for id, name, img_ori in zip(list_name_id, list_name_image, list_or_image):
+            #     print(type(img_ori))
+            #     print(img_ori.shape)
+            #     img_ori = np.array(img_ori)
+            #     path_image = f"{id}-{name}.jpg"
+            #     cv2.imwrite(os.path.join(root_dir, path_image), cv2.cvtColor(img_ori, cv2.COLOR_RGB2BGR))
+            #     file.write(
+            #         str(path_image) + " " + str(copy_ccs[count][0]) + "\n"
+            #     )
+            #     count += 1
+            
+            # file.close() 
+
 
             clip_grad_norm_(model_fiqa.parameters(), max_norm=5, norm_type=2)
             
