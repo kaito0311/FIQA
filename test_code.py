@@ -14,6 +14,28 @@ from backbones.iresnet_imintv5 import iresnet160
 
 
 
+print(len(os.listdir("feature_dir")))
+
+
+exit() 
+print(len(os.listdir("data/images/home1/webface_260M/unzip_folder/WebFace260M")))
+
+
+exit()
+root_dir = "data/test_zip"
+
+list_file = os.listdir(root_dir)
+
+target_dir = "./data/images"
+
+for file_zip in list_file:
+    cmd = f"unzip {os.path.join(root_dir, file_zip)} -d {target_dir}"
+    os.system(cmd)
+
+
+
+
+exit()
 
 diction = np.load("data/diction_mean_cluster_thresh_5e-1.npy", allow_pickle= True).item() 
 

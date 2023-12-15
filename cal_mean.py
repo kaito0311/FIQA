@@ -46,7 +46,8 @@ def clustering_data(X, threshold=0.7):
     return X[max_cluster_indices].reshape(-1, 1024), np.mean(dis_avg_matrix)
 
 
-feature_dir = '/home2/tanminh/FIQA/feature_dir'
+feature_dir = 'feature_dir'
+feature_flip_dir = "feature_flip_dir"
 diction = np.load("dict_name_features.npy", allow_pickle=True).item()
 ls_mean = []
 
@@ -55,12 +56,12 @@ diction_mean_cluster = dict()
 for name_id in tqdm(diction.keys()):
     data = np.load(os.path.join(feature_dir, name_id+".npy")).reshape(-1, 1024)
     if len(data) > 2:
-        data, mean_distance_cluster = clustering_data(data, threshold=0.5)
+        data, mean_distance_cluster = clustering_data(data, threshold=5.0)
         diction_mean_cluster[name_id] = mean_distance_cluster 
     ls_mean.append(np.mean(data, axis=0).reshape(1, -1))
 
 ls_mean = np.concatenate(ls_mean, axis=0)
 print(ls_mean.shape)
 
-np.save("data/diction_mean_cluster_thresh_5e-1.npy", diction_mean_cluster)
-np.save("data/mean_cluster_thresh_5e-1.npy", ls_mean)
+np.save("data/diction_mean_cluster_thresh_5e0.npy", diction_mean_cluster)
+np.save("data/mean_cluster.npy", ls_mean)

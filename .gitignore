@@ -8,3 +8,4 @@ output/
 pretrained/
 venv/
 not_push_dir/
+*.zip
