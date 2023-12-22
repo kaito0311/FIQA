@@ -67,9 +67,9 @@ def clustering_data(X, threshold=0.7, return_infor_prob=True):
         return X[max_cluster_indices].reshape(-1, 1024), None, None
 
 if __name__ == "__main__":
-    feature_dir = 'feature_dir'
-    feature_flip_dir = "feature_flip_dir"
-    diction = np.load("data/2k_id/dict_name_features.npy", allow_pickle=True).item()
+    feature_dir = 'data/10k_id/feature_dir'
+    feature_flip_dir = "data/10k_id/feature_flip_dir"
+    diction = np.load("data/10k_id/dict_name_features.npy", allow_pickle=True).item()
     ls_mean_feature = []
     ls_std_feature = []
 
@@ -104,7 +104,7 @@ if __name__ == "__main__":
     np.save("ls_mean_cosine_similar.npy", ls_mean_cosine) 
     np.save("ls_std_cosine_similar.npy", ls_std_cosine) 
     np.save("mean_feature.npy", ls_mean_feature)
-    
+
 
     # np.save("./data/mean_cosine_distance_cluster.npy", diction_mean_cluster)
     # np.save("./data/std_cosine_distance_cluster.npy", diction_std_cluster)

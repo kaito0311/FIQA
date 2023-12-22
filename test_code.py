@@ -19,6 +19,71 @@ import numpy as np
 
 from degrade_image.degrade import auto_degrade
 
+
+from utils.utils import UtilMeasureTimeRunning 
+
+
+print(len(os.listdir("data/images/WebFace260M")))
+
+exit()
+source_dir = "/home/data2/tanminh/FIQA/FIQA/data/home1/webface_260M/unzip_folder/WebFace260M"
+target_dir = "data/images/WebFace260M"
+for name_id in tqdm(os.listdir(source_dir)):
+    cmd = f"cp -r {os.path.join(source_dir, name_id)} {os.path.join(target_dir)}"
+    os.system(cmd)
+
+
+exit()
+
+root_dir = "data/test_zip_5k_10k"
+
+list_file = os.listdir(root_dir)
+
+target_dir = "./data/"
+
+for file_zip in list_file:
+    cmd = f"unzip {os.path.join(root_dir, file_zip)} -d {target_dir}"
+    os.system(cmd)
+
+
+
+exit()
+root_dir = "/home1/webface_260M/unzip_folder/WebFace260M"
+list_path_folder = np.load("data/100k_id/dict_name_features.npy", allow_pickle= True).item().keys() 
+list_path_folder = list(list_path_folder)[500:2000] 
+
+print(len(list_path_folder))
+
+target_dir = "test_zip/"
+
+os.makedirs(target_dir, exist_ok= True) 
+
+name = 500
+for path in tqdm(list_path_folder): 
+    path = os.path.join(root_dir, path)
+    cmd = f"zip -r {os.path.join(target_dir, str(name))} {path}"
+    print(path)
+    name += 1 
+    os.system(cmd)
+
+
+
+
+
+exit()
+measure_time = UtilMeasureTimeRunning() 
+
+start = time.time() 
+
+time.sleep(4) 
+
+measure_time["test"] = time.time() - start 
+
+print(measure_time.diction_time)
+
+
+exit()
+
 test = np.load("data/2k_id/both_flip/mean_cosine_similar.npy", allow_pickle= True)
 print(test)
 

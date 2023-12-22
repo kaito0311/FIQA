@@ -23,6 +23,7 @@ from dataset import MXFaceDataset, FaceDataset, FaceDatasetImage
 from backbones.iresnet_imintv5 import iresnet160
 from backbones.iresnet import iresnet100, iresnet50
 from models.vit import VisionTransformer
+from utils.utils import UtilMeasureTimeRunning
 from utils.utils_logging import AverageMeter, init_logging
 from utils.utils_callbacks import CallBackVerification, CallBackLogging, CallBackModelCheckpoint
 
@@ -30,6 +31,8 @@ from utils.utils_callbacks import CallBackVerification, CallBackLogging, CallBac
 torch.backends.cudnn.benchmark = True
 torch.set_num_threads(4)
 
+
+measure_time = UtilMeasureTimeRunning() 
 
 class VIT_FIQA(torch.nn.Module):
     def __init__(self, pretrained_vit=None, pretrained_head=None, freeze_backbone=True) -> None:
@@ -59,6 +62,10 @@ class VIT_FIQA(torch.nn.Module):
         return self.sigmoid(output)
 
 
+def calculate_sub(q):
+    q = q.reshape(1, -1)
+    return q[0][1:] - q[0][:-1]
+
 def train():
     if not os.path.exists(cfg.output):
         os.makedirs(cfg.output)
@@ -75,15 +82,16 @@ def train():
         path_list_id=cfg.path_list_id,
         is_save_listed=True
     )
-    dataloader = DataLoader(trainset, cfg.batch_size, shuffle=False,
+    dataloader = DataLoader(trainset, cfg.batch_size, shuffle=True,
                             num_workers=cfg.num_workers, drop_last=True)
 
-    model_fiqa = VIT_FIQA(pretrained_vit="pretrained/FP16-ViT-B-32.pt",
+    model_fiqa = VIT_FIQA(pretrained_vit= None,
                           pretrained_head=None, freeze_backbone=False)
 
     imint_backbone = ONNX_IMINT(cfg.path_backbone_imint)
     
     if cfg.resume_vit is not None:
+        print("[INFO] Loadding pretrained ", cfg.resume_vit)
         model_fiqa.load_state_dict(torch.load(cfg.resume_vit))
 
     model_fiqa.to(cfg.device)
@@ -103,8 +111,9 @@ def train():
         m=0.5,
     )
 
-    start_epoch = 0
+    start_epoch = cfg.start_epoch
     total_step = int(len(trainset) / cfg.batch_size * cfg.num_epoch)
+    print("[INFO]: total_step: ", total_step)
 
     opt_head = torch.optim.AdamW(
         model_fiqa.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
@@ -120,42 +129,94 @@ def train():
     loss = AverageMeter()
     global_step = cfg.global_step
 
+    
+
     for epoch in range(start_epoch, cfg.num_epoch):
         for index, (list_name_id, list_name_image, list_or_image, images_numpy, images_tensor, labels) in enumerate(dataloader):
+            if global_step > total_step: 
+                break 
+            if global_step % 100 == 0: 
+                print(measure_time.diction_time)
+    
+            start = time.time() 
             global_step += 1
             lr = scheduler_header(global_step)
 
             images_tensor = images_tensor.to(cfg.device)
             labels = labels.to(cfg.device)
 
+            measure_time["to_cuda"] = time.time() - start 
+            start = time.time() 
+
             qs = model_fiqa(images_tensor)
             
+            measure_time["cal_qs"] = time.time() - start 
+            start = time.time()
+ 
+            
             features_imint = imint_backbone(images_numpy)
-            features_imint = torch.Tensor(features_imint.astype(np.float32)).to(cfg.device)
+            features_imint = torch.Tensor(features_imint.astype(np.float32)).clone().to(cfg.device)
+    
+            measure_time["feature_imint"] = time.time() - start 
+            start = time.time()
+
+
+
             _, _, ccs, nnccs = FR_loss(features_imint, labels)
 
             ccs = ccs - 0.1 * nnccs 
 
-            def prev_sub(q):
-                prev = torch.empty_like(q.reshape(1, -1))
-                prev[0][0:-1] = q.reshape(1, -1).clone()[0][1:]
-                prev[0][-1] = q.reshape(1, -1).clone()[0][0]
-                return prev
-
-            ccs_sub1 = prev_sub(ccs)  # shape (1, bs)
+                        
             y_truth = torch.where(
-                (ccs_sub1[0] - ccs.reshape(1, -1)[0]) < 0, 0.0, 1.0)
+                calculate_sub(ccs.clone()) < 0, 0.0, 1.0)
 
-            qs_sub = prev_sub(qs)
-            y_pred = qs_sub[0] - qs.reshape(1, -1)[0]
+            y_pred = calculate_sub(qs)
+
             y_pred = torch.exp(y_pred)
             y_pred = y_pred / (y_pred + 1)
+            
+            if torch.isnan(y_pred[0]):
+                root_dir = "./sample_training"
+
+                copy_ccs = ccs.reshape(-1, 1).detach().cpu().numpy() 
+
+                file = open("note_score_shuffle.txt", "a")
+
+                os.makedirs(os.path.join(root_dir), exist_ok= True)
+
+                count = 0
+                for id, name, img_ori in zip(list_name_id, list_name_image, list_or_image):
+                    print(type(img_ori))
+                    print(img_ori.shape)
+                    img_ori = np.array(img_ori)
+                    path_image = f"{id}-{name}.jpg"
+                    cv2.imwrite(os.path.join(root_dir, path_image), cv2.cvtColor(img_ori, cv2.COLOR_RGB2BGR))
+                    file.write(
+                        str(path_image) + " " + str(copy_ccs[count][0]) + "\n"
+                    )
+                    count += 1
+                
+                file.close() 
+
+            print("y_pred", y_pred)
+            print("y_truth", y_truth)
+            print("features_imint", features_imint)
+            print("ccs", ccs)
+            print("qs", qs)
             bce_loss = rank_loss_func(y_pred, y_truth)
 
             loss_qs = criterion_qs(qs, torch.sigmoid(ccs))
+            
+            loss_v = 4 * bce_loss + max((1000 - global_step) / 1000 * 10, 1) * loss_qs
 
-            loss_v = 4 * bce_loss + 10 * loss_qs
-            loss_v.backward()
+            measure_time["cal_loss"] = time.time() - start 
+            start = time.time()
+            print("bce loss: ", bce_loss)
+            try:
+                loss_v.backward()
+            except Exception as e:
+                print(e) 
+                print("loss_qs", loss_qs)
 
             # ''' Save '''
             # root_dir = "./sample_training"
@@ -198,8 +259,11 @@ def train():
                 print("bce loss: ", bce_loss)
 
             # callback_verification(global_step, backbone)
-            if global_step % 100 == 0:
+            if global_step % 2000 == 0:
                 callback_checkpoint(global_step, None, model_fiqa)
+
+            measure_time["backward"] = time.time() - start 
+        
 
         callback_checkpoint(global_step, None, model_fiqa)
 

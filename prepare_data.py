@@ -98,12 +98,12 @@ if __name__ == "__main__":
     os.makedirs(features_dir, exist_ok= True)
     os.makedirs(features_flip_dir, exist_ok= True)
     dataset = FaceDataset(
-        num_ids=2000, root_dir="data/images/WebFace260M", feature_dirs=features_dir)
+        num_ids=10000, root_dir="data/images/WebFace260M", feature_dirs=features_dir)
     dataset.prepare_data()
 
     dataloader = DataLoader(
         dataset,
-        batch_size=16,
+        batch_size=32,
         shuffle=False,
         num_workers=4,
         drop_last=False

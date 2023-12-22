@@ -29,3 +29,20 @@ def cosine_lr(optimizer, base_lrs, warmup_length, steps):
             assign_learning_rate(param_group, lr)
         return lr
     return _lr_adjuster
+
+
+class UtilMeasureTimeRunning:
+    def __init__(self) -> None:
+        self.diction_time = dict() 
+    
+    def __setitem__(self, name, time):
+        if name not in self.diction_time.keys():
+            self.diction_time[name] = 0 
+        
+        self.diction_time[name] += time 
+        
+
+    def __getitem__(self, name):
+        return self.diction_time[name]
+    
+    
